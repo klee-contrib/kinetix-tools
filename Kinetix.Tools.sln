@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kinetix.Tools.SqlTestGenerator", "Kinetix.Tools.SqlTestGenerator\Kinetix.Tools.SqlTestGenerator.csproj", "{4CA5720E-9FE3-4274-818E-A1281EFE16B5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kinetix.Tools.Analyzers", "Kinetix.Tools.Analyzers\Kinetix.Tools.Analyzers.csproj", "{DBC2AFBC-F4B6-4ADF-A83A-8C7BCA857123}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8A424A77-575D-4093-A561-20430BF7D46E}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4CA5720E-9FE3-4274-818E-A1281EFE16B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4CA5720E-9FE3-4274-818E-A1281EFE16B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4CA5720E-9FE3-4274-818E-A1281EFE16B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4CA5720E-9FE3-4274-818E-A1281EFE16B5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBC2AFBC-F4B6-4ADF-A83A-8C7BCA857123}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBC2AFBC-F4B6-4ADF-A83A-8C7BCA857123}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBC2AFBC-F4B6-4ADF-A83A-8C7BCA857123}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBC2AFBC-F4B6-4ADF-A83A-8C7BCA857123}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D3BC715A-449E-44E6-B703-76C47ED2BA80}
+	EndGlobalSection
+EndGlobal
