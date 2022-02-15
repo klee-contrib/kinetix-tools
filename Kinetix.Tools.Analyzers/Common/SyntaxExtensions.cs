@@ -54,8 +54,9 @@ namespace Kinetix.Tools.Analyzers.Common
         /// <returns>Nom complet de l'espace de nom.</returns>
         public static string GetNameSpaceFullName(this ClassDeclarationSyntax classNode)
         {
-            var nsNode = classNode.FirstAncestorOrSelf<NamespaceDeclarationSyntax>();
-            return nsNode?.Name.ToString();
+            var nsName = classNode.FirstAncestorOrSelf<NamespaceDeclarationSyntax>()?.Name
+                ?? classNode.FirstAncestorOrSelf<FileScopedNamespaceDeclarationSyntax>()?.Name;
+            return nsName?.ToString();
         }
 
         /// <summary>
