@@ -42,7 +42,7 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
             var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree);
 
             // On vérifie que le champ est bien en lecture seule et n'est pas initialisé à la déclaration.
-            if (racine.FindNode(location.SourceSpan) is not VariableDeclaratorSyntax déclarationChamp || (context.Symbol as IFieldSymbol)?.IsReadOnly == false || déclarationChamp.Initializer != null)
+            if (racine.FindNode(location.SourceSpan) is not VariableDeclaratorSyntax déclarationChamp || context.Symbol is IFieldSymbol { IsReadOnly: false } || déclarationChamp.Initializer != null)
             {
                 return;
             }
@@ -61,7 +61,7 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
                         .Where(x =>
                         {
                             var argument = x as ArgumentSyntax;
-                            return argument?.RefOrOutKeyword.Kind() == SyntaxKind.OutKeyword && SymbolEqualityComparer.Default.Equals(modèleSémantique.GetSymbolInfo(argument.Expression).Symbol, context.Symbol);
+                            return (argument?.RefKindKeyword.IsKind(SyntaxKind.OutKeyword) ?? false) && SymbolEqualityComparer.Default.Equals(modèleSémantique.GetSymbolInfo(argument.Expression).Symbol, context.Symbol);
                         })));
 
             // Si le champ n'est jamais initialisé, on lève l'erreur.

@@ -31,7 +31,7 @@ namespace Kinetix.Tools.Analyzers.Common
         public static Location GetMethodLocation(this MethodDeclarationSyntax methNode)
         {
             return methNode.ChildTokens()
-                .First(x => x.Kind() == SyntaxKind.IdentifierToken)
+                .First(x => x.IsKind(SyntaxKind.IdentifierToken))
                 .GetLocation();
         }
 
@@ -43,7 +43,7 @@ namespace Kinetix.Tools.Analyzers.Common
         public static Location GetNameDeclarationLocation(this SyntaxNode node)
         {
             return node.ChildTokens()
-                .First(x => x.Kind() == SyntaxKind.IdentifierToken)
+                .First(x => x.IsKind(SyntaxKind.IdentifierToken))
                 .GetLocation();
         }
 
@@ -77,7 +77,7 @@ namespace Kinetix.Tools.Analyzers.Common
         /// <returns><code>True</code> si la méthode est publique.</returns>
         public static bool IsPublic(this MethodDeclarationSyntax methNode)
         {
-            return methNode.Modifiers.Any(x => x.Kind() == SyntaxKind.PublicKeyword);
+            return methNode.Modifiers.Any(x => x.IsKind(SyntaxKind.PublicKeyword));
         }
 
         /// <summary>

@@ -73,8 +73,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
         private static async Task<Solution> RenameField(Document document, ISymbol symbol, string newName)
         {
             var solution = document.Project.Solution;
-            var options = solution.Workspace.Options;
-            return await Renamer.RenameSymbolAsync(solution, symbol, newName, options);
+            return await Renamer.RenameSymbolAsync(solution, symbol, new SymbolRenameOptions(true, true, true, true), newName);
         }
     }
 }

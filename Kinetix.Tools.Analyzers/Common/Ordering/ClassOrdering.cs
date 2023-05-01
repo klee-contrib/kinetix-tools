@@ -24,13 +24,13 @@ namespace Kinetix.Tools.Analyzers.Common.Ordering
             var comparateurStatiqueLectureSeule = new StaticReadonlyComparer();
 
             var constantes = éléments.OfType<FieldDeclarationSyntax>()
-                .Where(élément => élément.Modifiers.Any(jeton => jeton.Kind() == SyntaxKind.ConstKeyword))
+                .Where(élément => élément.Modifiers.Any(jeton => jeton.IsKind(SyntaxKind.ConstKeyword)))
                 .TrierParNom()
                 .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
                 .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
             var champs = éléments.OfType<FieldDeclarationSyntax>()
-                .Where(élément => !élément.Modifiers.Any(jeton => jeton.Kind() == SyntaxKind.ConstKeyword))
+                .Where(élément => !élément.Modifiers.Any(jeton => jeton.IsKind(SyntaxKind.ConstKeyword)))
                 .TrierParNom()
                 .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
                 .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
