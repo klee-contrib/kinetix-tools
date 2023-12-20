@@ -39,12 +39,8 @@ namespace Kinetix.Tools.Analyzers.Common
                         .Count(méthodeInterface => méthodeInterface.Name == méthode.Identifier.Text);
 
                     // On génère la ligne de documentation.
-                    var inheritDoc = $@"/// <inheritdoc cref=""{
-                        RécupérerNomType(méthode, méthodeCorrespondante, modèleSémantique)
-                    }.{
-                        RécupérerNomMéthode(méthodeCorrespondante)
-                      + RécupérerParamètres(méthode, méthodeCorrespondante, modèleSémantique, nombreMéthodesSurchargées)
-                    }"" />";
+                    var inheritDoc = $@"/// <inheritdoc cref=""{RécupérerNomType(méthode, méthodeCorrespondante, modèleSémantique)}.{RécupérerNomMéthode(méthodeCorrespondante)
+                      + RécupérerParamètres(méthode, méthodeCorrespondante, modèleSémantique, nombreMéthodesSurchargées)}"" />";
 
                     // On récupère la documentation actuelle de la classe.
                     var documentationActuelle = méthode.GetLeadingTrivia().ToString().Replace("\n", string.Empty).Replace("\r", string.Empty).Replace(" ", string.Empty);
@@ -100,7 +96,7 @@ namespace Kinetix.Tools.Analyzers.Common
         /// <returns>Le nom complet de la méthode.</returns>
         private static string RécupérerParamètres(MethodDeclarationSyntax méthode, IMethodSymbol méthodeCorrespondante, SemanticModel modèleSémantique, int nombreMéthodesSurchargées)
         {
-            if (nombreMéthodesSurchargées == 1 || méthodeCorrespondante.Parameters.Length == 0)
+            if (nombreMéthodesSurchargées == 1)
             {
                 return string.Empty;
             }
