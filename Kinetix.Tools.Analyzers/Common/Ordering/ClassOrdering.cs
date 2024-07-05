@@ -75,8 +75,7 @@ namespace Kinetix.Tools.Analyzers.Common.Ordering
                 .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
             var méthodes = éléments.OfType<MethodDeclarationSyntax>()
-                .TrierParNombreParametres()
-                .OrderBy(élément => (élément as MethodDeclarationSyntax).Identifier.ToString(), StringComparer.Ordinal)
+                .OrderBy(élément => élément.Identifier.ToString(), StringComparer.Ordinal)
                 .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
                 .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 

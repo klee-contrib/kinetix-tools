@@ -22,8 +22,8 @@ namespace Kinetix.Tools.Analyzers.Common.Ordering
                 { Accessibility.Public, 5 }
             };
 
-            var xEstExplicite = (x as IMethodSymbol)?.MethodKind == MethodKind.ExplicitInterfaceImplementation;
-            var yEstExplicite = (y as IMethodSymbol)?.MethodKind == MethodKind.ExplicitInterfaceImplementation;
+            var xEstExplicite = x is IMethodSymbol { MethodKind: MethodKind.ExplicitInterfaceImplementation };
+            var yEstExplicite = y is IMethodSymbol { MethodKind: MethodKind.ExplicitInterfaceImplementation };
 
             return xEstExplicite || yEstExplicite
                 ? xEstExplicite && y.DeclaredAccessibility == Accessibility.Public
