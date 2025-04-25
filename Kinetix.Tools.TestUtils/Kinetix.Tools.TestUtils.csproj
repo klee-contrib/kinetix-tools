@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <LangVersion>latest</LangVersion>
+    <Version>0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Kinetix.DataAccess.Sql.Postgres" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.2" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.8.0" />
+  </ItemGroup>
+
+</Project>
