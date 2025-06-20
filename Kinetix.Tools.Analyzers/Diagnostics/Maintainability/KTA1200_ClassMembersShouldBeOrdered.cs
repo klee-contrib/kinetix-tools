@@ -59,7 +59,7 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Maintainability
             var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree);
 
             // On ignore la vérification sur les classes partielles.
-            if (!(racine.FindNode(location.SourceSpan) is TypeDeclarationSyntax type))
+            if (racine.FindNode(location.SourceSpan) is not TypeDeclarationSyntax type)
             {
                 return false;
             }

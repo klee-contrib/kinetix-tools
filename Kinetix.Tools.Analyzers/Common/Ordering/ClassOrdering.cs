@@ -69,12 +69,16 @@ namespace Kinetix.Tools.Analyzers.Common.Ordering
                 .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
                 .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var opérateurs = éléments.OfType<OperatorDeclarationSyntax>()
+            var indexeurs = éléments.OfType<IndexerDeclarationSyntax>()
+                .OrderBy(élément => élément.Type.ToString(), StringComparer.Ordinal)
                 .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
                 .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var indexeurs = éléments.OfType<IndexerDeclarationSyntax>()
-                .OrderBy(élément => élément.Type.ToString(), StringComparer.Ordinal)
+            var conversions = éléments.OfType<ConversionOperatorDeclarationSyntax>()
+                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+
+            var opérateurs = éléments.OfType<OperatorDeclarationSyntax>()
                 .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
                 .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
@@ -103,8 +107,9 @@ namespace Kinetix.Tools.Analyzers.Common.Ordering
                 énumérations,
                 interfaces,
                 propriétés,
-                opérateurs,
                 indexeurs,
+                conversions,
+                opérateurs,
                 méthodes,
                 structs,
                 classes);
