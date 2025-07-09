@@ -47,8 +47,14 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
                 return;
             }
 
+            var parent = déclarationChamp.Ancestors().FirstOrDefault(a => a is ClassDeclarationSyntax or StructDeclarationSyntax or RecordDeclarationSyntax);
+            if (parent == null)
+            {
+                return;
+            }
+
             // On parcourt tous les constructeurs de la classe et récupère les assignations du champ dans chacun.
-            var usages = racine.FindNode(déclarationChamp.Ancestors().OfType<ClassDeclarationSyntax>().First().Span)
+            var usages = parent
                 .ChildNodes().OfType<ConstructorDeclarationSyntax>()
                 .SelectMany(constructeur =>
                     constructeur.DescendantNodes()
