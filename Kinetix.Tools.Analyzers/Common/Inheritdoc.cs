@@ -104,7 +104,7 @@ namespace Kinetix.Tools.Analyzers.Common
             return $@"({string.Join(", ", méthodeCorrespondante.Parameters
                 .Select(symbol => symbol.Type.ToMinimalDisplayString(
                     modèleSémantique,
-                    méthode.GetLocation().SourceSpan.Start)))})";
+                    méthode.GetLocation().SourceSpan.Start).Replace("<", "{").Replace(">", "}")))})";
         }
     }
 }
