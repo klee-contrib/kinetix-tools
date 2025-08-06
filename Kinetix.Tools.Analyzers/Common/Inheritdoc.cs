@@ -24,15 +24,10 @@ namespace Kinetix.Tools.Analyzers.Common
                 // On récupère la version sémantique de la méthode pour identifier ses paramètres.
                 var méthodeSémantique = modèleSémantique.GetDeclaredSymbol(méthode);
 
-                // On liste toutes les méthodes des interfaces de la classe puis on cherche l'unique méthode avec la même signature.
-                var méthodeCorrespondantes = modèleSémantique.GetDeclaredSymbol(classe).Interfaces
-                    .SelectMany(contrat => contrat.GetMembers())
-                    .Where(méthodeInterface => méthodeInterface.Name == méthode.Identifier.Text
-                        && ((méthodeInterface as IMethodSymbol)?.Parameters.SequenceEqual(méthodeSémantique.Parameters, (p1, p2) => p1.Name == p2.Name) ?? false));
-
+                var méthodeCorrespondante = méthodeSémantique.GetImplementedMethod();
 
                 // S'il y a bien une méthode correspondante, on continue.
-                if ((méthodeCorrespondantes.Count() == 1 ? méthodeCorrespondantes.Single() : null) is IMethodSymbol méthodeCorrespondante)
+                if (méthodeCorrespondante != null)
                 {
                     // On récupère le nombre de méthode du même nom dans l'interface pour savoir s'il faut spécifier les paramètres ou non.
                     var nombreMéthodesSurchargées = (méthodeCorrespondante.ContainingSymbol as INamedTypeSymbol).GetMembers()

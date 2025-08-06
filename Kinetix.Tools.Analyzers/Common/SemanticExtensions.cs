@@ -22,6 +22,22 @@ namespace Kinetix.Tools.Analyzers.Common
             return symbol.Name.Split('.').First();
         }
 
+        public static IMethodSymbol GetImplementedMethod(this IMethodSymbol method)
+        {
+            var interfaceMethods = method.ContainingType.AllInterfaces
+                .SelectMany(contrat => contrat.GetMembers())
+                .OfType<IMethodSymbol>()
+                .Where(interfaceMethod => interfaceMethod.Name == method.Name
+                    && interfaceMethod.Parameters.SequenceEqual(method.Parameters, (p1, p2) => p1.Name == p2.Name));
+
+            if (interfaceMethods.Count() == 1)
+            {
+                return interfaceMethods.Single();
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Indique si une assemblée est une implémentation de module métier.
         /// </summary>
@@ -79,7 +95,7 @@ namespace Kinetix.Tools.Analyzers.Common
         }
 
         /// <summary>
-        /// Indique si deux symboles ont la même mignature.
+        /// Indique si deux symboles ont la même signature.
         /// </summary>
         /// <param name="left">Méthode de gauche.</param>
         /// <param name="right">Méthode de droite.</param>
