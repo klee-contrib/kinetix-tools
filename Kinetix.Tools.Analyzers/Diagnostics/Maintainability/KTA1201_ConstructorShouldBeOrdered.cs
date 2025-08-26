@@ -23,7 +23,7 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Maintainability
 
         private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title, MessageFormat, Category, Description);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
         /// <summary>
         /// Méthode d'initialisation de l'analyseur.
@@ -61,9 +61,9 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Maintainability
 
             // On récupère les informations nécessaires du contexte du symbole.
             var location = context.Symbol.Locations.First();
-            var racine = location.SourceTree.GetRoot();
-            var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree);
-            var méthode = racine.FindNode(location.SourceSpan) as ConstructorDeclarationSyntax;
+            var racine = location.SourceTree?.GetRoot();
+            var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree!);
+            var méthode = racine?.FindNode(location.SourceSpan) as ConstructorDeclarationSyntax;
 
             // On récupère le corps du constructeur.
             if (méthode?.ChildNodes().FirstOrDefault(nœud => nœud as BlockSyntax != null) is not BlockSyntax corps)

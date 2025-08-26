@@ -22,7 +22,7 @@ namespace Kinetix.Tools.Analyzers.Common
             return symbol.Name.Split('.').First();
         }
 
-        public static IMethodSymbol GetImplementedMethod(this IMethodSymbol method)
+        public static IMethodSymbol? GetImplementedMethod(this IMethodSymbol method)
         {
             var interfaceMethods = method.ContainingType.AllInterfaces
                 .SelectMany(contrat => contrat.GetMembers())

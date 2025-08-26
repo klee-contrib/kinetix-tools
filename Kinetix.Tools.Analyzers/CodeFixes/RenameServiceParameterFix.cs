@@ -18,8 +18,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
     {
         private const string title = "Renommer en {0}";
 
-        public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-            ImmutableArray.Create(KTA1501_ServiceCtrParameterNamingAnalyser.DiagnosticId);
+        public sealed override ImmutableArray<string> FixableDiagnosticIds => [KTA1501_ServiceCtrParameterNamingAnalyser.DiagnosticId];
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
@@ -32,14 +31,14 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
-            var node = root.FindNode(diagnosticSpan).AncestorsAndSelf().OfType<ParameterSyntax>().FirstOrDefault();
+            var node = root?.FindNode(diagnosticSpan).AncestorsAndSelf().OfType<ParameterSyntax>().FirstOrDefault();
             if (node == null)
             {
                 return;
             }
 
             var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
-            if (semanticModel.GetTypeInfo(node.Type, context.CancellationToken).Type is not INamedTypeSymbol namedTypeSymbol)
+            if (semanticModel.GetTypeInfo(node.Type!, context.CancellationToken).Type is not INamedTypeSymbol namedTypeSymbol)
             {
                 return;
             }
@@ -57,17 +56,19 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
 
             /* Symbole à renommer. */
             var parameterSymbol = semanticModel.GetDeclaredSymbol(node, context.CancellationToken);
+            if (parameterSymbol != null)
+            {
+                /* Nouveau nom. */
+                var newName = typeName.GetServiceContractParameterName();
 
-            /* Nouveau nom. */
-            var newName = typeName.GetServiceContractParameterName();
-
-            var titleFormat = string.Format(title, newName);
-            context.RegisterCodeFix(
-                CodeAction.Create(
-                    title: titleFormat,
-                    createChangedSolution: c => RenameParameter(context.Document, parameterSymbol, newName),
-                    equivalenceKey: titleFormat),
-                diagnostic);
+                var titleFormat = string.Format(title, newName);
+                context.RegisterCodeFix(
+                    CodeAction.Create(
+                        title: titleFormat,
+                        createChangedSolution: c => RenameParameter(context.Document, parameterSymbol, newName),
+                        equivalenceKey: titleFormat),
+                    diagnostic);
+            }
         }
 
         private static async Task<Solution> RenameParameter(Document document, ISymbol symbol, string newName)

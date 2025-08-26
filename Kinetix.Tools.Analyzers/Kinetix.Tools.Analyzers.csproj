@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
     <DevelopmentDependency>true</DevelopmentDependency>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <NoPackageAnalysis>true</NoPackageAnalysis>
@@ -11,7 +12,7 @@
 
   <PropertyGroup>
     <PackageOutputPath>./nupkg</PackageOutputPath>
-    <Version>1.11.4</Version>
+    <Version>1.11.5</Version>
     <Authors>JabX</Authors>
     <Description>Analyseurs pour Kinetix.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

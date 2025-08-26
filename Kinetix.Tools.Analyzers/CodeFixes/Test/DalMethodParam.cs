@@ -10,7 +10,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
         /// <summary>
         /// Nom du paramètre.
         /// </summary>
-        public string Name
+        public required string Name
         {
             get;
             set;
@@ -20,7 +20,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
         /// Expression de la valeur du paramètre.
         /// Rendue telle quelle dans le template de la classe de test.
         /// </summary>
-        public string Value
+        public required string Value
         {
             get;
             set;
@@ -42,6 +42,6 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
         {
             get;
             set;
-        } = new List<string>();
+        } = [];
     }
 }

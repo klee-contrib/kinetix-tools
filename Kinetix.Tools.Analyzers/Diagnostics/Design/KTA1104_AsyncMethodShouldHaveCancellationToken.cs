@@ -39,17 +39,18 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
     {
         // On récupère les informations nécessaires du contexte du symbole.
         var location = context.Symbol.Locations.First();
-        var root = location.SourceTree.GetRoot();
-        var semanticModel = context.Compilation.GetSemanticModel(location.SourceTree);
+        var root = location.SourceTree?.GetRoot();
 
-        if (root.FindNode(location.SourceSpan) is not MethodDeclarationSyntax method)
+        if (root?.FindNode(location.SourceSpan) is not MethodDeclarationSyntax method)
         {
             return;
         }
 
-        var cancellationTokenType = context.Compilation.GetTypeByMetadataName("System.Threading.CancellationToken");
-        var genericTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
-        var genericValueTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1");
+        var semanticModel = context.Compilation.GetSemanticModel(location.SourceTree!);
+
+        var cancellationTokenType = context.Compilation.GetTypeByMetadataName("System.Threading.CancellationToken")!;
+        var genericTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1")!;
+        var genericValueTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1")!;
 
         var semMethod = semanticModel.GetDeclaredSymbol(method) as IMethodSymbol;
 
@@ -69,17 +70,18 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
 
         foreach (var calledMethod in body.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
-            var calledInvocation = semanticModel.GetOperation(calledMethod) as IInvocationOperation;
-
-            if (InvocationMethodTakesAToken(calledInvocation.TargetMethod, calledInvocation.Arguments, cancellationTokenType))
+            if (semanticModel.GetOperation(calledMethod) is IInvocationOperation calledInvocation)
             {
-                hasCancellableInvocation = true;
-                break;
-            }
-            else if (MethodHasCancellationTokenOverload(context.Compilation, calledInvocation.TargetMethod, cancellationTokenType, genericTask, genericValueTask))
-            {
-                hasCancellableInvocation = true;
-                break;
+                if (InvocationMethodTakesAToken(calledInvocation.TargetMethod, calledInvocation.Arguments, cancellationTokenType))
+                {
+                    hasCancellableInvocation = true;
+                    break;
+                }
+                else if (MethodHasCancellationTokenOverload(context.Compilation, calledInvocation.TargetMethod, cancellationTokenType, genericTask, genericValueTask))
+                {
+                    hasCancellableInvocation = true;
+                    break;
+                }
             }
         }
 

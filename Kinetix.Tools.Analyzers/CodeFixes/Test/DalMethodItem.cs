@@ -11,7 +11,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
         /// <summary>
         /// Nom de l'assemblée qui contient la DAL.
         /// </summary>
-        public string DalAssemblyName
+        public required string DalAssemblyName
         {
             get;
             set;
@@ -20,7 +20,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
         /// <summary>
         /// Nom de la classe de la DAL.
         /// </summary>
-        public string DalClassName
+        public required string DalClassName
         {
             get;
             set;
@@ -29,7 +29,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
         /// <summary>
         /// Nom de la méthode de la DAL.
         /// </summary>
-        public string DalMethodName
+        public required string DalMethodName
         {
             get;
             set;
@@ -38,7 +38,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
         /// <summary>
         /// Espace de nom de la classe de la DAL.
         /// </summary>
-        public string DalNamespace
+        public required string DalNamespace
         {
             get;
             set;
@@ -47,7 +47,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
         /// <summary>
         /// Liste des paramètres de la méthode de la DAL.
         /// </summary>
-        public ICollection<DalMethodParam> Params
+        public required ICollection<DalMethodParam> Params
         {
             get;
             set;
@@ -61,7 +61,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
         /// <summary>
         /// Liste des usings spécifiques aux projets.
         /// </summary>
-        public ICollection<string> SpecificUsings
+        public required ICollection<string> SpecificUsings
         {
             get;
             set;

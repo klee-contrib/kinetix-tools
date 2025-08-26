@@ -21,8 +21,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
     [Shared]
     public class ReorderClassFix : CodeFixProvider
     {
-        public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-            ImmutableArray.Create(KTA1200_ClassMembersShouldBeOrdered.DiagnosticId);
+        public sealed override ImmutableArray<string> FixableDiagnosticIds => [KTA1200_ClassMembersShouldBeOrdered.DiagnosticId];
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
@@ -40,14 +39,17 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
 
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
-            var type = root.FindToken(diagnosticSpan.Start).Parent.AncestorsAndSelf().OfType<TypeDeclarationSyntax>().First();
+            var type = root?.FindToken(diagnosticSpan.Start).Parent?.AncestorsAndSelf().OfType<TypeDeclarationSyntax>().First();
 
-            context.RegisterCodeFix(
-                CodeAction.Create(
-                    "Réordonner les membres",
-                    c => OrdonnerMembres(context.Document, type, c),
-                    "Réordonner les membres"),
-                diagnostic);
+            if (type != null)
+            {
+                context.RegisterCodeFix(
+                    CodeAction.Create(
+                        "Réordonner les membres",
+                        c => OrdonnerMembres(context.Document, type, c),
+                        "Réordonner les membres"),
+                    diagnostic);
+            }
         }
 
         /// <summary>
@@ -64,6 +66,11 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
                 .GetSyntaxRootAsync(jetonAnnulation)
                 .ConfigureAwait(false);
             var modèleSémantique = await document.GetSemanticModelAsync(jetonAnnulation);
+
+            if (racine == null || modèleSémantique == null)
+            {
+                return document;
+            }
 
             var nouveauType = type.WithMembers(SyntaxFactory.List(ClassOrdering.OrdonnerMembres(type.Members, modèleSémantique)));
 

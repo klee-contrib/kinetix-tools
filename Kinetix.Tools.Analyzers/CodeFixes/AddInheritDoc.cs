@@ -22,8 +22,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
     [Shared]
     public class AddInheritDoc : CodeFixProvider
     {
-        public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-            ImmutableArray.Create(KTA1600_InheritdocIsIncorrect.DiagnosticId);
+        public sealed override ImmutableArray<string> FixableDiagnosticIds => [KTA1600_InheritdocIsIncorrect.DiagnosticId];
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
@@ -41,14 +40,16 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
 
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
-            var declaration = root.FindToken(diagnosticSpan.Start).Parent.AncestorsAndSelf().OfType<MethodDeclarationSyntax>().First();
-
-            context.RegisterCodeFix(
-                CodeAction.Create(
-                    @"Générer le ""inheritDoc""",
-                    c => AjouterInheritDoc(context.Document, declaration, c),
-                    @"Générer le ""inheritDoc"""),
-                diagnostic);
+            var declaration = root?.FindToken(diagnosticSpan.Start).Parent?.AncestorsAndSelf().OfType<MethodDeclarationSyntax>().First();
+            if (declaration != null)
+            {
+                context.RegisterCodeFix(
+                    CodeAction.Create(
+                        @"Générer le ""inheritDoc""",
+                        c => AjouterInheritDoc(context.Document, declaration, c),
+                        @"Générer le ""inheritDoc"""),
+                    diagnostic);
+            }
         }
 
         /// <summary>
@@ -65,13 +66,17 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
                 .GetSyntaxRootAsync(jetonAnnulation)
                 .ConfigureAwait(false);
             var modèleSémantique = await document.GetSemanticModelAsync(jetonAnnulation);
+            if (racine == null || modèleSémantique == null)
+            {
+                return document;
+            }
 
             // On a déjà trouvé le inheritDoc dans le diagnostic mais on ne peut pas vraiment le passer au correctif...
             var inheritDoc = Inheritdoc.InheritDocEstCorrect(modèleSémantique, méthode);
 
             // Ajoute la ligne de commentaire à la méthode.
             var méthodeCommentée = méthode
-                .WithLeadingTrivia(SyntaxFactory.LineFeed, SyntaxFactory.Comment(inheritDoc), SyntaxFactory.LineFeed)
+                .WithLeadingTrivia(SyntaxFactory.LineFeed, SyntaxFactory.Comment(inheritDoc!), SyntaxFactory.LineFeed)
                 .WithAdditionalAnnotations(Formatter.Annotation);
 
             // Met à jour la racine.

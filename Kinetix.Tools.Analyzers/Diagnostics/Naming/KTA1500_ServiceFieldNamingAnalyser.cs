@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kinetix.Tools.Analyzers.Diagnostics.Design
+namespace Kinetix.Tools.Analyzers.Diagnostics.Naming
 {
     /// <summary>
     /// Vérifie que le champ de service injecté sont nommés comme le service.
@@ -21,7 +21,7 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
 
         private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title, MessageFormat, Category, Description);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
         public override void Initialize(AnalysisContext context)
         {
@@ -30,24 +30,17 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
 
         private static void AnalyzeSyntaxNode(SyntaxNodeAnalysisContext context)
         {
-            var node = context.Node as ClassDeclarationSyntax;
-            new FieldWalker(context, node.GetClassName()).Visit(node);
+            if (context.Node is ClassDeclarationSyntax node)
+            {
+                new FieldWalker(context, node.GetClassName()).Visit(node);
+            }
         }
 
-        private class FieldWalker : CSharpSyntaxWalker
+        private class FieldWalker(SyntaxNodeAnalysisContext context, string className) : CSharpSyntaxWalker
         {
-            private readonly SyntaxNodeAnalysisContext _context;
-            private readonly string _className;
-
-            public FieldWalker(SyntaxNodeAnalysisContext context, string className)
-            {
-                _context = context;
-                _className = className;
-            }
-
             public override void VisitFieldDeclaration(FieldDeclarationSyntax node)
             {
-                var namedTypeSymbol = _context.GetNamedSymbol(node.Declaration.Type);
+                var namedTypeSymbol = context.GetNamedSymbol(node.Declaration.Type);
                 if (namedTypeSymbol == null)
                 {
                     return;
@@ -69,8 +62,8 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
                 {
                     return;
                 }
-                var diagnostic = Diagnostic.Create(Rule, node.GetFieldNameLocation(), _className, actualFieldName, expectedFieldName);
-                _context.ReportDiagnostic(diagnostic);
+                var diagnostic = Diagnostic.Create(Rule, node.GetFieldNameLocation(), className, actualFieldName, expectedFieldName);
+                context.ReportDiagnostic(diagnostic);
             }
         }
     }

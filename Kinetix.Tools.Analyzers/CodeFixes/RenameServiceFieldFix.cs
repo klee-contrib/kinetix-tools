@@ -3,7 +3,7 @@ using System.Composition;
 using System.Linq;
 using System.Threading.Tasks;
 using Kinetix.Tools.Analyzers.Common;
-using Kinetix.Tools.Analyzers.Diagnostics.Design;
+using Kinetix.Tools.Analyzers.Diagnostics.Naming;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -18,8 +18,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
     {
         private const string title = "Renommer en {0}";
 
-        public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-            ImmutableArray.Create(KTA1500_ServiceFieldNamingAnalyser.DiagnosticId);
+        public sealed override ImmutableArray<string> FixableDiagnosticIds => [KTA1500_ServiceFieldNamingAnalyser.DiagnosticId];
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
@@ -32,7 +31,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
-            var node = root.FindNode(diagnosticSpan).AncestorsAndSelf().OfType<FieldDeclarationSyntax>().FirstOrDefault();
+            var node = root?.FindNode(diagnosticSpan).AncestorsAndSelf().OfType<FieldDeclarationSyntax>().FirstOrDefault();
             if (node == null)
             {
                 return;
@@ -57,17 +56,19 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
 
             /* Symbole à renommer. */
             var fieldNameSymbol = semanticModel.GetDeclaredSymbol(node.Declaration.Variables.First(), context.CancellationToken);
+            if (fieldNameSymbol != null)
+            {
+                /* Nouveau nom. */
+                var newName = typeName.GetServiceContractFieldName();
 
-            /* Nouveau nom. */
-            var newName = typeName.GetServiceContractFieldName();
-
-            var titleFormat = string.Format(title, newName);
-            context.RegisterCodeFix(
-                CodeAction.Create(
-                    title: titleFormat,
-                    createChangedSolution: c => RenameField(context.Document, fieldNameSymbol, newName),
-                    equivalenceKey: titleFormat),
-                diagnostic);
+                var titleFormat = string.Format(title, newName);
+                context.RegisterCodeFix(
+                    CodeAction.Create(
+                        title: titleFormat,
+                        createChangedSolution: c => RenameField(context.Document, fieldNameSymbol, newName),
+                        equivalenceKey: titleFormat),
+                    diagnostic);
+            }
         }
 
         private static async Task<Solution> RenameField(Document document, ISymbol symbol, string newName)

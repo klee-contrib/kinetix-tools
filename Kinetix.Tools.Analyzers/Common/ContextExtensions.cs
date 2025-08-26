@@ -18,7 +18,7 @@ namespace Kinetix.Tools.Analyzers.Common
         /// <returns>Symbole du type.</returns>
         public static ITypeSymbol GetTypeSymbol(this SyntaxNodeAnalysisContext context, TypeSyntax typeNode)
         {
-            return context.SemanticModel.GetTypeInfo(typeNode, context.CancellationToken).Type;
+            return context.SemanticModel.GetTypeInfo(typeNode, context.CancellationToken).Type!;
         }
 
         /// <summary>
@@ -27,7 +27,7 @@ namespace Kinetix.Tools.Analyzers.Common
         /// <param name="context">Contexte.</param>
         /// <param name="typeNode">Node du type.</param>
         /// <returns>Symbole nommé.</returns>
-        public static INamedTypeSymbol GetNamedSymbol(this SyntaxNodeAnalysisContext context, TypeSyntax typeNode)
+        public static INamedTypeSymbol? GetNamedSymbol(this SyntaxNodeAnalysisContext context, TypeSyntax typeNode)
         {
             var typeSymbol = context.GetTypeSymbol(typeNode);
             return typeSymbol as INamedTypeSymbol;

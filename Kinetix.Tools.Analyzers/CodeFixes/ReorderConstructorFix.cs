@@ -21,8 +21,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
     [Shared]
     public class ReorderConstructorFix : CodeFixProvider
     {
-        public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-            ImmutableArray.Create(KTA1201_ConstructorShouldBeOrdered.DiagnosticId);
+        public sealed override ImmutableArray<string> FixableDiagnosticIds => [KTA1201_ConstructorShouldBeOrdered.DiagnosticId];
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
@@ -40,14 +39,16 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
 
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
-            var constructeur = root.FindToken(diagnosticSpan.Start).Parent.AncestorsAndSelf().OfType<ConstructorDeclarationSyntax>().First();
-
-            context.RegisterCodeFix(
-                CodeAction.Create(
-                    "Réordonner les assignations",
-                    c => OrdonnerAssignations(context.Document, constructeur, c),
-                    "Réordonner les assignations"),
-                diagnostic);
+            var constructeur = root?.FindToken(diagnosticSpan.Start).Parent?.AncestorsAndSelf().OfType<ConstructorDeclarationSyntax>().First();
+            if (constructeur != null)
+            {
+                context.RegisterCodeFix(
+                    CodeAction.Create(
+                        "Réordonner les assignations",
+                        c => OrdonnerAssignations(context.Document, constructeur, c),
+                        "Réordonner les assignations"),
+                    diagnostic);
+            }
         }
 
         /// <summary>
@@ -66,7 +67,10 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
             var modèleSémantique = await document.GetSemanticModelAsync(jetonAnnulation);
 
             // On récupère le corps du constructeur.
-            var corps = constructeur.ChildNodes().First(nœud => nœud as BlockSyntax != null) as BlockSyntax;
+            if (constructeur.ChildNodes().First(nœud => nœud as BlockSyntax != null) is not BlockSyntax corps || modèleSémantique == null || racine == null)
+            {
+                return document;
+            }
 
             // On récupère toutes les conditions sur les paramètres.
             var conditions = ConstructorOrdering.TrouveConditionsParametres(corps.Statements, modèleSémantique);

@@ -6,10 +6,10 @@ namespace Kinetix.Tools.Analyzers.Common.Ordering
     /// <summary>
     /// Comparateur d'accessibilité.
     /// </summary>
-    public class AccessibilityComparer : IComparer<ISymbol>
+    public class AccessibilityComparer : IComparer<ISymbol?>
     {
         /// <inheritdoc cref="IComparer{T}.Compare" />
-        public int Compare(ISymbol x, ISymbol y)
+        public int Compare(ISymbol? x, ISymbol? y)
         {
             var valeurs = new Dictionary<Accessibility, int>
             {
@@ -26,13 +26,13 @@ namespace Kinetix.Tools.Analyzers.Common.Ordering
             var yEstExplicite = y is IMethodSymbol { MethodKind: MethodKind.ExplicitInterfaceImplementation };
 
             return xEstExplicite || yEstExplicite
-                ? xEstExplicite && y.DeclaredAccessibility == Accessibility.Public
-                    || yEstExplicite && x.DeclaredAccessibility == Accessibility.Public
+                ? xEstExplicite && y != null && y.DeclaredAccessibility == Accessibility.Public
+                    || yEstExplicite && x != null && x.DeclaredAccessibility == Accessibility.Public
                     || xEstExplicite && yEstExplicite
                     ? 0
                     : xEstExplicite ? -1 : 1
-                : valeurs[x.DeclaredAccessibility] > valeurs[y.DeclaredAccessibility] ? -1
-                : valeurs[x.DeclaredAccessibility] < valeurs[y.DeclaredAccessibility] ? 1
+                : x != null && y != null && valeurs[x.DeclaredAccessibility] > valeurs[y.DeclaredAccessibility] ? -1
+                : x != null && y != null && valeurs[x.DeclaredAccessibility] < valeurs[y.DeclaredAccessibility] ? 1
                 : 0;
         }
     }

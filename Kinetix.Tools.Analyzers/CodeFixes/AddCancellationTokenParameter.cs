@@ -41,9 +41,8 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
 
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
-            var method = root.FindNode(diagnosticSpan) as MethodDeclarationSyntax;
 
-            if (method != null)
+            if (root?.FindNode(diagnosticSpan) is MethodDeclarationSyntax method)
             {
                 context.RegisterCodeFix(
                     CodeAction.Create(
@@ -57,6 +56,11 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
         private static async Task<Solution> AddParameter(Document document, MethodDeclarationSyntax method, CancellationToken ct)
         {
             var root = await document.GetSyntaxRootAsync(ct).ConfigureAwait(false);
+            if (root == null)
+            {
+                return document.Project.Solution;
+            }
+
             var semanticModel = await document.GetSemanticModelAsync(ct);
 
             var newMethod = AddCtParam(method);
@@ -74,21 +78,27 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
                 var implementedMethod = methodModel.GetImplementedMethod();
                 if (implementedMethod != null)
                 {
-                    var declaration = await implementedMethod.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntaxAsync(ct);
-                    if (declaration is MethodDeclarationSyntax interfaceMethod)
+                    var declarationSR = implementedMethod.DeclaringSyntaxReferences.FirstOrDefault();
+                    if (declarationSR != null)
                     {
-                        var interfaceRoot = await interfaceMethod.SyntaxTree.GetRootAsync();
+                        var declaration = await declarationSR.GetSyntaxAsync(ct);
+                        if (declaration is MethodDeclarationSyntax interfaceMethod)
+                        {
+                            var interfaceRoot = await interfaceMethod.SyntaxTree.GetRootAsync();
 
-                        var interfaceDocument = solution.GetDocument(interfaceMethod.SyntaxTree);
+                            var interfaceDocument = solution.GetDocument(interfaceMethod.SyntaxTree);
+                            if (interfaceDocument != null)
+                            {
+                                var newInterfaceMethod = AddCtParam(interfaceMethod);
 
-                        var newInterfaceMethod = AddCtParam(interfaceMethod);
+                                var newInterfaceRoot = Formatter.Format(
+                                    interfaceRoot.ReplaceNode(interfaceMethod, newInterfaceMethod),
+                                    interfaceDocument.Project.Solution.Workspace,
+                                    cancellationToken: ct);
 
-                        var newInterfaceRoot = Formatter.Format(
-                            interfaceRoot.ReplaceNode(interfaceMethod, newInterfaceMethod),
-                            interfaceDocument.Project.Solution.Workspace,
-                            cancellationToken: ct);
-
-                        solution = solution.WithDocumentSyntaxRoot(interfaceDocument.Id, newInterfaceRoot);
+                                solution = solution.WithDocumentSyntaxRoot(interfaceDocument.Id, newInterfaceRoot);
+                            }
+                        }
                     }
                 }
             }

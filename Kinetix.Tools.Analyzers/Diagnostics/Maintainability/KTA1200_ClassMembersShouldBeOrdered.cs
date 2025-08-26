@@ -55,8 +55,13 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Maintainability
         {
             // On récupère les informations nécessaires du contexte du symbole.
             var location = context.Symbol.Locations.First();
-            var racine = location.SourceTree.GetRoot();
-            var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree);
+            var racine = location.SourceTree?.GetRoot();
+            if (racine == null)
+            {
+                return false;
+            }
+
+            var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree!);
 
             // On ignore la vérification sur les classes partielles.
             if (racine.FindNode(location.SourceSpan) is not TypeDeclarationSyntax type)

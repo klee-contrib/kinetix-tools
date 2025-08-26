@@ -22,7 +22,7 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Documentation
 
         private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title, MessageFormat, Category, Description);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
         /// <summary>
         /// Méthode d'initialisation de l'analyseur.
@@ -50,16 +50,20 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Documentation
         /// </summary>
         /// <param name="context">Le contexte du symbole.</param>
         /// <returns>La ligne inheritDoc correcte dans le cas où l'actuelle est manquante/incorrecte, sinon null.</returns>
-        private static string InheritDocEstCorrect(SymbolAnalysisContext context)
+        private static string? InheritDocEstCorrect(SymbolAnalysisContext context)
         {
             // On récupère les informations nécessaires du contexte du symbole.
             var location = context.Symbol.Locations.First();
-            var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree);
-            var racine = location.SourceTree.GetRoot();
-            var méthode = racine.FindNode(location.SourceSpan) as MethodDeclarationSyntax;
+            var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree!);
+            var racine = location.SourceTree?.GetRoot();
+
+            if (racine?.FindNode(location.SourceSpan) is not MethodDeclarationSyntax méthode)
+            {
+                return null;
+            }
 
             // On ignore le code généré.
-            return (méthode?.Parent as ClassDeclarationSyntax)?.AttributeLists.Any(node => node.ChildNodes().Any(node2 => node2.ToString().Contains("GeneratedCode"))) ?? true
+            return (méthode.Parent as ClassDeclarationSyntax)?.AttributeLists.Any(node => node.ChildNodes().Any(node2 => node2.ToString().Contains("GeneratedCode"))) ?? true
                 ? null
                 : Inheritdoc.InheritDocEstCorrect(modèleSémantique, méthode);
         }

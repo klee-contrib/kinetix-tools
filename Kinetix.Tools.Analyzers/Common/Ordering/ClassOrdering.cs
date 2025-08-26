@@ -135,12 +135,12 @@ namespace Kinetix.Tools.Analyzers.Common.Ordering
             return éléments.OrderBy(élément => élément.ParameterList.ChildNodes().Count());
         }
 
-        private static IEnumerable<BaseFieldDeclarationSyntax> TrierParSymbole(this IEnumerable<BaseFieldDeclarationSyntax> éléments, SemanticModel modèleSémantique, IComparer<ISymbol> comparateur)
+        private static IEnumerable<BaseFieldDeclarationSyntax> TrierParSymbole(this IEnumerable<BaseFieldDeclarationSyntax> éléments, SemanticModel modèleSémantique, IComparer<ISymbol?> comparateur)
         {
             return éléments.OrderBy(élément => modèleSémantique.GetDeclaredSymbol(élément.Declaration.Variables.First()), comparateur);
         }
 
-        private static IEnumerable<MemberDeclarationSyntax> TrierParSymbole(this IEnumerable<MemberDeclarationSyntax> éléments, SemanticModel modèleSémantique, IComparer<ISymbol> comparateur)
+        private static IEnumerable<MemberDeclarationSyntax> TrierParSymbole(this IEnumerable<MemberDeclarationSyntax> éléments, SemanticModel modèleSémantique, IComparer<ISymbol?> comparateur)
         {
             return éléments.OrderBy(élément => modèleSémantique.GetDeclaredSymbol(élément), comparateur);
         }

@@ -38,7 +38,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
 
-            var node = root.FindNode(context.Span);
+            var node = root?.FindNode(context.Span);
 
             /* Filtre sur les méthodes publiques. */
             if (node is not MethodDeclarationSyntax methDecl || !methDecl.IsPublic())
@@ -65,7 +65,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
             context.RegisterCodeFix(
                     CodeAction.Create(
                         title: TitleSemantic,
-                        createChangedSolution: c => Task.FromResult(AddUnitTest(context.Document, methSymbol, classDecl, DalTestStrategy.Semantic)),
+                        createChangedSolution: c => Task.FromResult(AddUnitTest(context.Document, methSymbol!, classDecl, DalTestStrategy.Semantic)),
                         equivalenceKey: TitleSemantic),
                     context.Diagnostics.First());
 
@@ -73,7 +73,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
             context.RegisterCodeFix(
                     CodeAction.Create(
                         title: TitleStandard,
-                        createChangedSolution: c => Task.FromResult(AddUnitTest(context.Document, methSymbol, classDecl, DalTestStrategy.Standard)),
+                        createChangedSolution: c => Task.FromResult(AddUnitTest(context.Document, methSymbol!, classDecl, DalTestStrategy.Standard)),
                         equivalenceKey: TitleStandard),
                     context.Diagnostics.First());
         }

@@ -20,11 +20,11 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Coverage
         private static readonly string Description = "Méthode de DAL avec GetSqlCommand ou GetBroker.";
         private static readonly string MessageFormat = "La méthode utilise GetSqlCommand ou GetBroker";
 
-        private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title, MessageFormat, Category, Description, DiagnosticSeverity.Hidden);
+        private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title!, MessageFormat, Category, Description, DiagnosticSeverity.Hidden);
 
         private static readonly string Title = "Méthode de DAL avec GetSqlCommand ou GetBroker";
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
         public override void Initialize(AnalysisContext context)
         {
@@ -58,19 +58,13 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Coverage
             walker.Visit(classDecl);
         }
 
-        private class MethodWithSqlServerCommandWalker : CSharpSyntaxWalker
+        private class MethodWithSqlServerCommandWalker(SyntaxNodeAnalysisContext context) : CSharpSyntaxWalker
         {
-            private readonly SyntaxNodeAnalysisContext _context;
-            private MethodDeclarationSyntax _currentMethDecl;
-
-            public MethodWithSqlServerCommandWalker(SyntaxNodeAnalysisContext context)
-            {
-                _context = context;
-            }
+            private MethodDeclarationSyntax? _currentMethDecl;
 
             public override void VisitInvocationExpression(InvocationExpressionSyntax node)
             {
-                var symbol = _context.SemanticModel.GetSymbolInfo(node, _context.CancellationToken).Symbol;
+                var symbol = context.SemanticModel.GetSymbolInfo(node, context.CancellationToken).Symbol;
                 if (symbol != null)
                 {
                     switch (symbol.Name)
@@ -78,8 +72,11 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Coverage
                         case "GetSqlCommand":
                         case "GetBroker":
                             /* La méthode est candidate au test unitaire de DAL : on créé le diagnostic. */
-                            var diagnostic = Diagnostic.Create(Rule, _currentMethDecl.GetMethodLocation());
-                            _context.ReportDiagnostic(diagnostic);
+                            if (_currentMethDecl != null)
+                            {
+                                var diagnostic = Diagnostic.Create(Rule, _currentMethDecl.GetMethodLocation());
+                                context.ReportDiagnostic(diagnostic);
+                            }
                             /* On arrête l'analyse et on sort. */
                             return;
                     }

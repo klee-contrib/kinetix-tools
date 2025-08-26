@@ -16,37 +16,39 @@ namespace Kinetix.Tools.Analyzers.Common
         /// <param name="modèleSémantique">Le modèle sémantique lié.</param>
         /// <param name="méthode">La méthode concernée.</param>
         /// <returns>La ligne inheritDoc correcte dans le cas où l'actuelle est manquante/incorrecte, sinon null.</returns>
-        public static string InheritDocEstCorrect(SemanticModel modèleSémantique, MethodDeclarationSyntax méthode)
+        public static string? InheritDocEstCorrect(SemanticModel modèleSémantique, MethodDeclarationSyntax méthode)
         {
             // Si on est bien dans une méthode de classe.
             if (méthode != null && méthode?.Parent is ClassDeclarationSyntax classe)
             {
                 // On récupère la version sémantique de la méthode pour identifier ses paramètres.
                 var méthodeSémantique = modèleSémantique.GetDeclaredSymbol(méthode);
-
-                var méthodeCorrespondante = méthodeSémantique.GetImplementedMethod();
-
-                // S'il y a bien une méthode correspondante, on continue.
-                if (méthodeCorrespondante != null)
+                if (méthodeSémantique != null)
                 {
-                    // On récupère le nombre de méthode du même nom dans l'interface pour savoir s'il faut spécifier les paramètres ou non.
-                    var nombreMéthodesSurchargées = (méthodeCorrespondante.ContainingSymbol as INamedTypeSymbol).GetMembers()
-                        .Count(méthodeInterface => méthodeInterface.Name == méthode.Identifier.Text);
+                    var méthodeCorrespondante = méthodeSémantique.GetImplementedMethod();
 
-                    // On génère la ligne de documentation.
-                    var inheritDoc = $@"/// <inheritdoc cref=""{RécupérerNomType(méthode, méthodeCorrespondante, modèleSémantique)}.{RécupérerNomMéthode(méthodeCorrespondante)
-                      + RécupérerParamètres(méthode, méthodeCorrespondante, modèleSémantique, nombreMéthodesSurchargées)}"" />";
-
-                    // On récupère la documentation actuelle de la classe.
-                    var documentationActuelle = méthode.GetLeadingTrivia().ToString().Replace("\n", string.Empty).Replace("\r", string.Empty).Replace(" ", string.Empty);
-
-                    // On la compare avec la ligne existante de façon bien crade, parce qu'en vrai elle n'est pas générée correctement.
-                    // Désolé. J'ai vraiment essayé de faire proprement mais la génération propre de commentaires XML est odieuse.
-                    // Si la ligne est différente et ne contient pas le mot "summary", on retourne la ligne de commentaire attendue.
-                    if (!inheritDoc.Replace("\n", string.Empty).Replace("\r", string.Empty).Replace(" ", string.Empty)
-                            .Equals(documentationActuelle) && !documentationActuelle.Contains("summary"))
+                    // S'il y a bien une méthode correspondante, on continue.
+                    if (méthodeCorrespondante != null)
                     {
-                        return inheritDoc;
+                        // On récupère le nombre de méthode du même nom dans l'interface pour savoir s'il faut spécifier les paramètres ou non.
+                        var nombreMéthodesSurchargées = (méthodeCorrespondante.ContainingSymbol as INamedTypeSymbol)!.GetMembers()
+                            .Count(méthodeInterface => méthodeInterface.Name == méthode.Identifier.Text);
+
+                        // On génère la ligne de documentation.
+                        var inheritDoc = $@"/// <inheritdoc cref=""{RécupérerNomType(méthode, méthodeCorrespondante, modèleSémantique)}.{RécupérerNomMéthode(méthodeCorrespondante)
+                          + RécupérerParamètres(méthode, méthodeCorrespondante, modèleSémantique, nombreMéthodesSurchargées)}"" />";
+
+                        // On récupère la documentation actuelle de la classe.
+                        var documentationActuelle = méthode.GetLeadingTrivia().ToString().Replace("\n", string.Empty).Replace("\r", string.Empty).Replace(" ", string.Empty);
+
+                        // On la compare avec la ligne existante de façon bien crade, parce qu'en vrai elle n'est pas générée correctement.
+                        // Désolé. J'ai vraiment essayé de faire proprement mais la génération propre de commentaires XML est odieuse.
+                        // Si la ligne est différente et ne contient pas le mot "summary", on retourne la ligne de commentaire attendue.
+                        if (!inheritDoc.Replace("\n", string.Empty).Replace("\r", string.Empty).Replace(" ", string.Empty)
+                                .Equals(documentationActuelle) && !documentationActuelle.Contains("summary"))
+                        {
+                            return inheritDoc;
+                        }
                     }
                 }
             }

@@ -19,8 +19,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
     {
         private const string Title = "Remplacer avec le contrat {0}";
 
-        public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-            ImmutableArray.Create(KTA1100_DoNotDependOnServiceImplementationAnalyzer.DiagnosticId);
+        public sealed override ImmutableArray<string> FixableDiagnosticIds => [KTA1100_DoNotDependOnServiceImplementationAnalyzer.DiagnosticId];
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
@@ -33,18 +32,18 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
-            if (root.FindNode(diagnosticSpan).Parent is not ParameterSyntax paramNode)
+            if (root?.FindNode(diagnosticSpan).Parent is not ParameterSyntax paramNode)
             {
                 return;
             }
 
             /* Retrouver le type du paramètre */
-            var currentType = paramNode.Type;
+            var currentType = paramNode.Type!;
             var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
             var currentTypeInfo = semanticModel.GetTypeInfo(currentType);
 
             /* Trouver les contrats de service candidats pour le fix. */
-            var candidates = currentTypeInfo.Type.AllInterfaces.Where(x => x.IsServiceContract());
+            var candidates = currentTypeInfo.Type!.AllInterfaces.Where(x => x.IsServiceContract());
 
             /* Enregistrer les fix de remplacement */
             foreach (var candidate in candidates)
@@ -72,6 +71,11 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
 
             // Replace the old local declaration with the new local declaration.
             var oldRoot = await document.GetSyntaxRootAsync(cancellationToken);
+            if (oldRoot == null)
+            {
+                return document;
+            }
+
             var newRoot = oldRoot.ReplaceNode(paramNode, newParamNode);
 
             /* Ajoute le using. */

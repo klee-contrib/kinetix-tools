@@ -25,7 +25,7 @@ namespace Kinetix.Tools.Analyzers.Common
             }
 
             /* Vérifie que le using n'est pas déjà présent. */
-            if (unitSyntax.Usings.Any(x => x.Name.ToString() == nameSpace))
+            if (unitSyntax.Usings.Any(x => x.Name?.ToString() == nameSpace))
             {
                 return rootNode;
             }

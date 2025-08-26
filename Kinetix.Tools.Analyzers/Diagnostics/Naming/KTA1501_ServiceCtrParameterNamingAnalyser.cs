@@ -60,7 +60,7 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
 
             private void VisitCtrParameter(ParameterSyntax paramNode)
             {
-                var namedTypeSymbol = _context.GetNamedSymbol(paramNode.Type);
+                var namedTypeSymbol = _context.GetNamedSymbol(paramNode.Type!);
                 if (namedTypeSymbol == null)
                 {
                     return;

@@ -19,7 +19,7 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
 
         private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title, MessageFormat, Category, Description);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
         /// <summary>
         /// Méthode d'initialisation de l'analyseur.
@@ -38,14 +38,15 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
         {
             // On récupère les informations nécessaires du contexte du symbole.
             var location = context.Symbol.Locations.First();
-            var racine = location.SourceTree.GetRoot();
-            var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree);
+            var racine = location.SourceTree?.GetRoot();
 
             // On vérifie que le champ est bien en lecture seule et n'est pas initialisé à la déclaration.
-            if (racine.FindNode(location.SourceSpan) is not VariableDeclaratorSyntax déclarationChamp || context.Symbol is IFieldSymbol { IsReadOnly: false } || déclarationChamp.Initializer != null)
+            if (racine?.FindNode(location.SourceSpan) is not VariableDeclaratorSyntax déclarationChamp || context.Symbol is IFieldSymbol { IsReadOnly: false } || déclarationChamp.Initializer != null)
             {
                 return;
             }
+
+            var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree!);
 
             var parent = déclarationChamp.Ancestors().FirstOrDefault(a => a is ClassDeclarationSyntax or StructDeclarationSyntax or RecordDeclarationSyntax);
             if (parent == null)

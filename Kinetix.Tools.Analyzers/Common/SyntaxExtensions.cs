@@ -56,7 +56,7 @@ namespace Kinetix.Tools.Analyzers.Common
         {
             var nsName = classNode.FirstAncestorOrSelf<NamespaceDeclarationSyntax>()?.Name
                 ?? classNode.FirstAncestorOrSelf<FileScopedNamespaceDeclarationSyntax>()?.Name;
-            return nsName?.ToString();
+            return nsName!.ToString();
         }
 
         /// <summary>

@@ -45,7 +45,12 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
 
             /* 2. Parcourir les paramètres du constructeur */
             var className = clazz.Name;
-            var root = method.Locations.First().SourceTree.GetRoot(context.CancellationToken);
+            var root = method.Locations.First().SourceTree?.GetRoot(context.CancellationToken);
+            if (root == null)
+            {
+                return;
+            }
+
             foreach (var parameter in method.Parameters)
             {
                 var paramType = parameter.Type;
@@ -66,8 +71,8 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
         private static Location GetTypeLocation(SyntaxNode root, IParameterSymbol parameter)
         {
             var location = parameter.Locations.FirstOrDefault();
-            var paramNode = root.FindNode(location.SourceSpan) as ParameterSyntax;
-            return paramNode.Type.GetLocation();
+            var paramNode = root.FindNode(location!.SourceSpan) as ParameterSyntax;
+            return paramNode!.Type!.GetLocation();
         }
     }
 }

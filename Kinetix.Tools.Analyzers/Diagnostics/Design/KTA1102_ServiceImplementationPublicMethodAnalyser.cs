@@ -67,13 +67,16 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
             {
                 /* Vérifie qu'il existe une méthode d'interface correspondant */
                 var methSymbol = context.SemanticModel.GetDeclaredSymbol(methDecl, context.CancellationToken);
-                var hasMatchingInterfaceMeth = interfaceMethCandidates.Any(x => x.SignatureEquals(methSymbol));
-                if (!hasMatchingInterfaceMeth)
+                if (methSymbol != null)
                 {
-                    /* Créé le diagnostic. */
-                    var location = methDecl.GetNameDeclarationLocation();
-                    var diagnostic = Diagnostic.Create(Rule, location, methSymbol.Name, classSymbol.Name);
-                    context.ReportDiagnostic(diagnostic);
+                    var hasMatchingInterfaceMeth = interfaceMethCandidates.Any(x => x.SignatureEquals(methSymbol));
+                    if (!hasMatchingInterfaceMeth)
+                    {
+                        /* Créé le diagnostic. */
+                        var location = methDecl.GetNameDeclarationLocation();
+                        var diagnostic = Diagnostic.Create(Rule, location, methSymbol.Name, classSymbol.Name);
+                        context.ReportDiagnostic(diagnostic);
+                    }
                 }
             }
         }

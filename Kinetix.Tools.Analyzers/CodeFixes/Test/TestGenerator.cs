@@ -26,8 +26,8 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
                 DalMethodName = methSymbol.Name,
                 DalAssemblyName = classSymbol.ContainingAssembly.Name,
                 DalNamespace = classDecl.GetNameSpaceFullName(),
-                Params = methSymbol.Parameters.Select(x => GetParameter(x)).ToList(),
-                SpecificUsings = new List<string> { $"{applicationName}.Business.Common.Test" }
+                Params = [.. methSymbol.Parameters.Select(GetParameter)],
+                SpecificUsings = [$"{applicationName}.Business.Common.Test"]
             });
 
             var content = template.Render(strategy);
@@ -35,7 +35,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
             return (methTestFile, classTestDir, content);
         }
 
-        public static bool ShouldGenerateTest(IMethodSymbol methSymbol, INamedTypeSymbol classSymbol, Document document)
+        public static bool ShouldGenerateTest(IMethodSymbol? methSymbol, INamedTypeSymbol? classSymbol, Document document)
         {
             if (methSymbol == null || classSymbol == null)
             {
@@ -72,7 +72,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
         /// <returns>Expression de la valeur factice.</returns>
         private static string GetDummyValue(ITypeSymbol typeSymbol)
         {
-            var fullName = typeSymbol?.ToString();
+            var fullName = typeSymbol.ToString();
             if (string.IsNullOrEmpty(fullName))
             {
                 return "null";
@@ -163,7 +163,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
                 case "System.String":
                 case "System.DateTime":
                 case "System.Boolean":
-                    return new List<string>();
+                    return [];
                 default:
                     /* Cas d'une collection de beans. */
                     /* Cas d'une collection. */
@@ -175,22 +175,22 @@ namespace Kinetix.Tools.Analyzers.CodeFixes.Test
                         {
                             case "System.String":
                             case "System.Int32":
-                                return new List<string>();
+                                return [];
                         }
 
                         if (innerType.IsReferenceType)
                         {
-                            return new List<string> { innerType.ContainingNamespace.ToString() };
+                            return [innerType.ContainingNamespace.ToString()];
                         }
                     }
 
                     /* Cas d'un bean. */
                     if (typeSymbol.IsReferenceType && typeSymbol.ContainingNamespace != null)
                     {
-                        return new List<string> { typeSymbol.ContainingNamespace.ToString() };
+                        return [typeSymbol.ContainingNamespace.ToString()];
                     }
 
-                    return new List<string>();
+                    return [];
             }
         }
 

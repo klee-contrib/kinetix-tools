@@ -21,7 +21,7 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
 
         private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title, MessageFormat, Category, Description);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
         public override void Initialize(AnalysisContext context)
         {
@@ -52,7 +52,7 @@ namespace Kinetix.Tools.Analyzers.Diagnostics.Design
             }
 
             /* Récupère le symbole du type contenant. */
-            var currentNodeSymbol = context.SemanticModel.GetDeclaredSymbol(containingNode, context.CancellationToken);
+            var currentNodeSymbol = context.SemanticModel.GetDeclaredSymbol(containingNode, context.CancellationToken)!;
             /* Récupère les assemblées. */
             var referenceAssembly = identifierSymbol.ContainingAssembly;
             var currentAssembly = currentNodeSymbol.ContainingAssembly;

@@ -42,14 +42,17 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
 
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
-            var champ = root.FindToken(diagnosticSpan.Start).Parent.AncestorsAndSelf().OfType<VariableDeclaratorSyntax>().First();
+            var champ = root?.FindToken(diagnosticSpan.Start).Parent?.AncestorsAndSelf().OfType<VariableDeclaratorSyntax>().First();
 
-            context.RegisterCodeFix(
-                CodeAction.Create(
-                    "Injecter le champ par le constructeur",
-                    c => InjecterComposant(context.Document, champ, c),
-                    "Injecter le champ par le constructeur"),
-                diagnostic);
+            if (champ != null)
+            {
+                context.RegisterCodeFix(
+                    CodeAction.Create(
+                        "Injecter le champ par le constructeur",
+                        c => InjecterComposant(context.Document, champ, c),
+                        "Injecter le champ par le constructeur"),
+                    diagnostic);
+            }
         }
 
         /// <summary>
@@ -65,6 +68,12 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
             var racine = await document
                 .GetSyntaxRootAsync(jetonAnnulation)
                 .ConfigureAwait(false);
+
+            if (racine == null)
+            {
+                return document;
+            }
+
             var modèleSémantique = await document.GetSemanticModelAsync(jetonAnnulation);
 
             // On récupère le constructeur de la classe, s'il existe.
@@ -79,7 +88,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
             var paramètre = SyntaxFactory.Identifier(champ.Identifier.ToString().Substring(1));
 
             // On construit le texte de documentation en fonction du type de paramètre.
-            var type = (champ.Parent as VariableDeclarationSyntax).Type;
+            var type = (champ.Parent as VariableDeclarationSyntax)!.Type;
             var texte = type is PredefinedTypeSyntax ? "Valeur injectée."
                 : type.ToString().EndsWith("Service", StringComparison.Ordinal) ? "Service injecté."
                 : type.ToString().EndsWith("Dal", StringComparison.Ordinal) ? "DAL injectée."
@@ -101,7 +110,7 @@ namespace Kinetix.Tools.Analyzers.CodeFixes
 
                 // En ajoutant la déclaration.
                 .WithBody(
-                    constructeur.Body.AddStatements(
+                    constructeur.Body?.AddStatements(
                         SyntaxFactory.ExpressionStatement(
                             SyntaxFactory.AssignmentExpression(
                                 SyntaxKind.SimpleAssignmentExpression,
