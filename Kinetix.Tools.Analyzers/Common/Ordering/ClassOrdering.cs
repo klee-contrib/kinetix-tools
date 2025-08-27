@@ -97,6 +97,11 @@ namespace Kinetix.Tools.Analyzers.Common.Ordering
                 .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
                 .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
+            var records = éléments.OfType<RecordDeclarationSyntax>()
+                .TrierParNom()
+                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+
             return Concaténer(
                 constantes,
                 champs,
@@ -112,7 +117,8 @@ namespace Kinetix.Tools.Analyzers.Common.Ordering
                 opérateurs,
                 méthodes,
                 structs,
-                classes);
+                classes,
+                records);
         }
 
         private static IEnumerable<T> Concaténer<T>(params IEnumerable<T>[] listes)
