@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using Kinetix.Modeling;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Kinetix.Tools.TestUtils
 {
@@ -26,11 +25,16 @@ namespace Kinetix.Tools.TestUtils
         /// <typeparam name="T">Type des éléments. Doit être un type avec des propriétés.</typeparam>
         /// <param name="expected">Collection attendue.</param>
         /// <param name="actual">Collection constatée.</param>
-        public static void AreCollectionPropertiesEqual<T>(ICollection<T> expected, ICollection<T> actual)
+        public static void AreCollectionPropertiesEqual<T>(
+            ICollection<T> expected,
+            ICollection<T> actual
+        )
         {
             if (expected.Count != actual.Count)
             {
-                throw new ArgumentException("Les deux collections n'ont pas le même nombre d'éléments.");
+                throw new ArgumentException(
+                    "Les deux collections n'ont pas le même nombre d'éléments."
+                );
             }
 
             if (expected.Count != 0)
@@ -45,7 +49,11 @@ namespace Kinetix.Tools.TestUtils
                     actualValue.MoveNext();
                     foreach (var prop in beanDef.Properties)
                     {
-                        Assert.AreEqual(prop.GetValue(expectedValue.Current), prop.GetValue(actualValue.Current), "Index : " + i + ". Propriété : " + prop.PropertyName);
+                        Assert.AreEqual(
+                            prop.GetValue(expectedValue.Current),
+                            prop.GetValue(actualValue.Current),
+                            "Index : " + i + ". Propriété : " + prop.PropertyName
+                        );
                     }
                 }
             }
@@ -87,7 +95,7 @@ namespace Kinetix.Tools.TestUtils
                 return;
             }
 
-            Assert.Fail("Il était attendu que {0} >= {1}", arg1, arg2);
+            Assert.Fail($"Il était attendu que {arg1} >= {arg2}");
         }
 
         /// <summary>
@@ -104,7 +112,7 @@ namespace Kinetix.Tools.TestUtils
                 return;
             }
 
-            Assert.Fail("Il était attendu que {0} > {1}", arg1, arg2);
+            Assert.Fail($"Il était attendu que {arg1} > {arg2}");
         }
 
         /// <summary>
@@ -121,7 +129,7 @@ namespace Kinetix.Tools.TestUtils
                 return;
             }
 
-            Assert.Fail("Il était attendu que {0} <= {1}", arg1, arg2);
+            Assert.Fail($"Il était attendu que {arg1} <= {arg2}");
         }
 
         /// <summary>
@@ -138,7 +146,7 @@ namespace Kinetix.Tools.TestUtils
                 return;
             }
 
-            Assert.Fail("Il était attendu que {0} < {1}", arg1, arg2);
+            Assert.Fail($"Il était attendu que {arg1} <= {arg2}");
         }
 
         /// <summary>
@@ -163,11 +171,15 @@ namespace Kinetix.Tools.TestUtils
             }
             catch (Exception ex)
             {
-                Assert.Fail("Attendu : exception de type {0} ; constaté : {1}", typeof(TExpected).FullName, ex.GetType());
+                Assert.Fail(
+                    $"Attendu : exception de type {typeof(TExpected).FullName} ; constaté : {ex.GetType()}"
+                );
                 return null;
             }
 
-            Assert.Fail("Attendu : exception de type {0} ; constaté : pas d'exception", typeof(TExpected).FullName);
+            Assert.Fail(
+                $"Attendu : exception de type {typeof(TExpected).FullName} ; constaté : pas d'exception"
+            );
             return null;
         }
 
@@ -194,7 +206,11 @@ namespace Kinetix.Tools.TestUtils
             {
                 if (prop.PrimitiveType != null)
                 {
-                    Assert.AreEqual(prop.GetValue(expected), prop.GetValue(actual), $"Propriété {prop.PropertyName}");
+                    Assert.AreEqual(
+                        prop.GetValue(expected),
+                        prop.GetValue(actual),
+                        $"Propriété {prop.PropertyName}"
+                    );
                 }
                 else
                 {

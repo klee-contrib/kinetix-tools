@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -8,34 +7,34 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <NoPackageAnalysis>true</NoPackageAnalysis>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <NoWarn>RS1038</NoWarn>
   </PropertyGroup>
-
   <PropertyGroup>
     <PackageOutputPath>./nupkg</PackageOutputPath>
-    <Version>1.11.6</Version>
+    <Version>5.0.0</Version>
     <Authors>JabX</Authors>
     <Description>Analyseurs pour Kinetix.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
-
   <ItemGroup>
     <Compile Remove="nupkg\**" />
     <EmbeddedResource Remove="nupkg\**" />
     <None Remove="nupkg\**" />
   </ItemGroup>
-
   <ItemGroup>
-    <PackageReference Include="Meziantou.Polyfill" Version="1.0.49">
+    <PackageReference Include="Meziantou.Polyfill" Version="1.0.83">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Build.Locator" Version="1.9.1" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.11.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.0.0" />
   </ItemGroup>
-
   <ItemGroup>
-    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None
+      Include="$(OutputPath)\$(AssemblyName).dll"
+      Pack="true"
+      PackagePath="analyzers/dotnet/cs"
+      Visible="false"
+    />
   </ItemGroup>
-
 </Project>
