@@ -6,77 +6,83 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kinetix.Tools.Analyzers.Diagnostics.Design
+namespace Kinetix.Tools.Analyzers.Diagnostics.Design;
+
+/// <summary>
+/// Vérifie que les méthodes publiques des classes d'implémentations de service sont publiées dans un contrat de service.
+/// </summary>
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+public class KTA1102_ServiceImplementationPublicMethodAnalyser : DiagnosticAnalyzer
 {
-    /// <summary>
-    /// Vérifie que les méthodes publiques des classes d'implémentations de service sont publiées dans un contrat de service.
-    /// </summary>
-    [DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class KTA1102_ServiceImplementationPublicMethodAnalyser : DiagnosticAnalyzer
+    public const string DiagnosticId = "KTA1102";
+    private const string Category = "Design";
+    private static readonly string Description =
+        "Les méthodes publiques d'implémentation de services doivent être publiés dans un contrat de service.";
+    private static readonly string MessageFormat =
+        "La méthode publique {0} du service {1} doit être publiée dans un contrat de service, ou rendue privée";
+    private static readonly string Title =
+        "Les méthodes publiques d'implémentation de services doivent être publiés dans un contrat de service";
+
+    private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(
+        DiagnosticId,
+        Title,
+        MessageFormat,
+        Category,
+        Description
+    );
+
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+
+    public override void Initialize(AnalysisContext context)
     {
-        public const string DiagnosticId = "KTA1102";
-        private const string Category = "Design";
-        private static readonly string Description = "Les méthodes publiques d'implémentation de services doivent être publiés dans un contrat de service.";
-        private static readonly string MessageFormat = "La méthode publique {0} du service {1} doit être publiée dans un contrat de service, ou rendue privée";
-        private static readonly string Title = "Les méthodes publiques d'implémentation de services doivent être publiés dans un contrat de service";
+        /* Analyse pour les déclaration de classes. */
+        context.RegisterSyntaxNodeAction(AnalyzeSyntaxNode, SyntaxKind.ClassDeclaration);
+    }
 
-        private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title, MessageFormat, Category, Description);
-
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
-
-        public override void Initialize(AnalysisContext context)
+    private static void AnalyzeSyntaxNode(SyntaxNodeAnalysisContext context)
+    {
+        /* Vérifie que la classe est une implémentation de service. */
+        if (context.Node is not ClassDeclarationSyntax classNode)
         {
-            /* Analyse pour les déclaration de classes. */
-            context.RegisterSyntaxNodeAction(AnalyzeSyntaxNode, SyntaxKind.ClassDeclaration);
+            return;
         }
 
-        private static void AnalyzeSyntaxNode(SyntaxNodeAnalysisContext context)
+        var classSymbol = context.SemanticModel.GetDeclaredSymbol(classNode, context.CancellationToken);
+        if (classSymbol == null)
         {
-            /* Vérifie que la classe est une implémentation de service. */
-            if (context.Node is not ClassDeclarationSyntax classNode)
-            {
-                return;
-            }
+            return;
+        }
 
-            var classSymbol = context.SemanticModel.GetDeclaredSymbol(classNode, context.CancellationToken);
-            if (classSymbol == null)
-            {
-                return;
-            }
+        if (!classSymbol.IsServiceImplementation())
+        {
+            return;
+        }
 
-            if (!classSymbol.IsServiceImplementation())
-            {
-                return;
-            }
+        /* Recherche les interfaces de services. */
+        var interfaceCandidates = classSymbol.Interfaces.Where(x => x.IsServiceContract());
+        if (!interfaceCandidates.Any())
+        {
+            return;
+        }
 
-            /* Recherche les interfaces de services. */
-            var interfaceCandidates = classSymbol.Interfaces.Where(x => x.IsServiceContract());
-            if (!interfaceCandidates.Any())
-            {
-                return;
-            }
+        /* Index les méthodes d'interfaces candidates */
+        var interfaceMethCandidates = interfaceCandidates.SelectMany(x => x.GetMembers().OfType<IMethodSymbol>());
 
-            /* Index les méthodes d'interfaces candidates */
-            var interfaceMethCandidates = interfaceCandidates
-                .SelectMany(x => x
-                    .GetMembers().OfType<IMethodSymbol>());
-
-            /* Parcourt les méthodes */
-            var publicMethods = classNode.Members.OfType<MethodDeclarationSyntax>().Where(x => x.IsPublic());
-            foreach (var methDecl in publicMethods)
+        /* Parcourt les méthodes */
+        var publicMethods = classNode.Members.OfType<MethodDeclarationSyntax>().Where(x => x.IsPublic());
+        foreach (var methDecl in publicMethods)
+        {
+            /* Vérifie qu'il existe une méthode d'interface correspondant */
+            var methSymbol = context.SemanticModel.GetDeclaredSymbol(methDecl, context.CancellationToken);
+            if (methSymbol != null)
             {
-                /* Vérifie qu'il existe une méthode d'interface correspondant */
-                var methSymbol = context.SemanticModel.GetDeclaredSymbol(methDecl, context.CancellationToken);
-                if (methSymbol != null)
+                var hasMatchingInterfaceMeth = interfaceMethCandidates.Any(x => x.SignatureEquals(methSymbol));
+                if (!hasMatchingInterfaceMeth)
                 {
-                    var hasMatchingInterfaceMeth = interfaceMethCandidates.Any(x => x.SignatureEquals(methSymbol));
-                    if (!hasMatchingInterfaceMeth)
-                    {
-                        /* Créé le diagnostic. */
-                        var location = methDecl.GetNameDeclarationLocation();
-                        var diagnostic = Diagnostic.Create(Rule, location, methSymbol.Name, classSymbol.Name);
-                        context.ReportDiagnostic(diagnostic);
-                    }
+                    /* Créé le diagnostic. */
+                    var location = methDecl.GetNameDeclarationLocation();
+                    var diagnostic = Diagnostic.Create(Rule, location, methSymbol.Name, classSymbol.Name);
+                    context.ReportDiagnostic(diagnostic);
                 }
             }
         }

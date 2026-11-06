@@ -11,87 +11,98 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Kinetix.Tools.Analyzers.CodeFixes
+namespace Kinetix.Tools.Analyzers.CodeFixes;
+
+/// <summary>
+/// Correcteur pour OrdreConstructeur.
+/// Permet d'enregistrer les corrections liées aux diagnostics.
+/// </summary>
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ReorderConstructorFix))]
+[Shared]
+public class ReorderConstructorFix : CodeFixProvider
 {
-    /// <summary>
-    /// Correcteur pour OrdreConstructeur.
-    /// Permet d'enregistrer les corrections liées aux diagnostics.
-    /// </summary>
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ReorderConstructorFix))]
-    [Shared]
-    public class ReorderConstructorFix : CodeFixProvider
+    public sealed override ImmutableArray<string> FixableDiagnosticIds =>
+        [KTA1201_ConstructorShouldBeOrdered.DiagnosticId];
+
+    public sealed override FixAllProvider GetFixAllProvider()
     {
-        public sealed override ImmutableArray<string> FixableDiagnosticIds => [KTA1201_ConstructorShouldBeOrdered.DiagnosticId];
+        return WellKnownFixAllProviders.BatchFixer;
+    }
 
-        public sealed override FixAllProvider GetFixAllProvider()
+    /// <summary>
+    /// Enregistre les corrections de codes.
+    /// </summary>
+    /// <param name="context">Le contexte.</param>
+    /// <returns>Peut être attendu.</returns>
+    public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
+    {
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+
+        var diagnostic = context.Diagnostics.First();
+        var diagnosticSpan = diagnostic.Location.SourceSpan;
+        var constructeur = root
+            ?.FindToken(diagnosticSpan.Start)
+            .Parent?.AncestorsAndSelf()
+            .OfType<ConstructorDeclarationSyntax>()
+            .First();
+        if (constructeur != null)
         {
-            return WellKnownFixAllProviders.BatchFixer;
+            context.RegisterCodeFix(
+                CodeAction.Create(
+                    "Réordonner les assignations",
+                    c => OrdonnerAssignations(context.Document, constructeur, c),
+                    "Réordonner les assignations"
+                ),
+                diagnostic
+            );
+        }
+    }
+
+    /// <summary>
+    /// Réordonne les assignations d'un constructeur.
+    /// </summary>
+    /// <param name="document">Le document.</param>
+    /// <param name="constructeur">Le constructeur.</param>
+    /// <param name="jetonAnnulation">Le jeton d'annulation.</param>
+    /// <returns>Le nouveau document.</returns>
+    private static async Task<Document> OrdonnerAssignations(
+        Document document,
+        ConstructorDeclarationSyntax constructeur,
+        CancellationToken jetonAnnulation
+    )
+    {
+        // On récupère la racine et le modèle sémantique.
+        var racine = await document.GetSyntaxRootAsync(jetonAnnulation).ConfigureAwait(false);
+        var modèleSémantique = await document.GetSemanticModelAsync(jetonAnnulation);
+
+        // On récupère le corps du constructeur.
+        if (
+            constructeur.ChildNodes().First(nœud => nœud as BlockSyntax != null) is not BlockSyntax corps
+            || modèleSémantique == null
+            || racine == null
+        )
+        {
+            return document;
         }
 
-        /// <summary>
-        /// Enregistre les corrections de codes.
-        /// </summary>
-        /// <param name="context">Le contexte.</param>
-        /// <returns>Peut être attendu.</returns>
-        public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
-        {
-            var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+        // On récupère toutes les conditions sur les paramètres.
+        var conditions = ConstructorOrdering.TrouveConditionsParametres(corps.Statements, modèleSémantique);
 
-            var diagnostic = context.Diagnostics.First();
-            var diagnosticSpan = diagnostic.Location.SourceSpan;
-            var constructeur = root?.FindToken(diagnosticSpan.Start).Parent?.AncestorsAndSelf().OfType<ConstructorDeclarationSyntax>().First();
-            if (constructeur != null)
-            {
-                context.RegisterCodeFix(
-                    CodeAction.Create(
-                        "Réordonner les assignations",
-                        c => OrdonnerAssignations(context.Document, constructeur, c),
-                        "Réordonner les assignations"),
-                    diagnostic);
-            }
-        }
+        // On récupère les assignations et on les ordonne.
+        var assignations = ConstructorOrdering
+            .TrouverAssignations(corps.Statements, modèleSémantique)
+            .OrderBy(e => e.ToString());
 
-        /// <summary>
-        /// Réordonne les assignations d'un constructeur.
-        /// </summary>
-        /// <param name="document">Le document.</param>
-        /// <param name="constructeur">Le constructeur.</param>
-        /// <param name="jetonAnnulation">Le jeton d'annulation.</param>
-        /// <returns>Le nouveau document.</returns>
-        private static async Task<Document> OrdonnerAssignations(Document document, ConstructorDeclarationSyntax constructeur, CancellationToken jetonAnnulation)
-        {
-            // On récupère la racine et le modèle sémantique.
-            var racine = await document
-                .GetSyntaxRootAsync(jetonAnnulation)
-                .ConfigureAwait(false);
-            var modèleSémantique = await document.GetSemanticModelAsync(jetonAnnulation);
+        // On construit le nouveau corps du constructeur.
+        var corpsOrdonné = corps.WithStatements(
+            SyntaxFactory.List(
+                conditions.Concat(assignations).Concat(corps.Statements.Except(conditions).Except(assignations))
+            )
+        );
 
-            // On récupère le corps du constructeur.
-            if (constructeur.ChildNodes().First(nœud => nœud as BlockSyntax != null) is not BlockSyntax corps || modèleSémantique == null || racine == null)
-            {
-                return document;
-            }
+        // Et on met à jour la racine.
+        var nouvelleRacine = racine.ReplaceNode(corps, corpsOrdonné);
 
-            // On récupère toutes les conditions sur les paramètres.
-            var conditions = ConstructorOrdering.TrouveConditionsParametres(corps.Statements, modèleSémantique);
-
-            // On récupère les assignations et on les ordonne.
-            var assignations = ConstructorOrdering.TrouverAssignations(corps.Statements, modèleSémantique)
-                .OrderBy(e => e.ToString());
-
-            // On construit le nouveau corps du constructeur.
-            var corpsOrdonné = corps.WithStatements(
-                SyntaxFactory.List(
-                    conditions
-                        .Concat(assignations)
-                        .Concat(corps.Statements
-                            .Except(conditions)
-                            .Except(assignations))));
-
-            // Et on met à jour la racine.
-            var nouvelleRacine = racine.ReplaceNode(corps, corpsOrdonné);
-
-            return document.WithSyntaxRoot(nouvelleRacine);
-        }
+        return document.WithSyntaxRoot(nouvelleRacine);
     }
 }

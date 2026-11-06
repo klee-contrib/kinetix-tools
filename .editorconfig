@@ -1,4 +1,9 @@
 ﻿[*.cs]
+end_of_line = crlf
+tab_width = 4
+indent_size = 4
+max_line_length = 120
+
 dotnet_diagnostic.RS1030.severity = none
 dotnet_diagnostic.RS1025.severity = none
 dotnet_diagnostic.RS1026.severity = none

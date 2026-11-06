@@ -1,19 +1,17 @@
-﻿namespace Kinetix.Tools.Analyzers.CodeFixes.Test
+﻿namespace Kinetix.Tools.Analyzers.CodeFixes.Test;
+
+/// <summary>
+/// Stratégies de test de DAL.
+/// </summary>
+public enum DalTestStrategy
 {
     /// <summary>
-    /// Stratégies de test de DAL.
+    /// Test standard : on appelle la méthode.
     /// </summary>
-    public enum DalTestStrategy
-    {
+    Standard,
 
-        /// <summary>
-        /// Test standard : on appelle la méthode.
-        /// </summary>
-        Standard,
-
-        /// <summary>
-        /// Test sémantique : on appelle la méthode et on valide le test même en cas d'exception liées aux données.
-        /// </summary>
-        Semantic
-    }
+    /// <summary>
+    /// Test sémantique : on appelle la méthode et on valide le test même en cas d'exception liées aux données.
+    /// </summary>
+    Semantic,
 }

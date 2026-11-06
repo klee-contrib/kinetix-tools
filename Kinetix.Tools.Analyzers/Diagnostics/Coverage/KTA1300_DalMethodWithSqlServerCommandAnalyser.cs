@@ -5,92 +5,98 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kinetix.Tools.Analyzers.Diagnostics.Coverage
+namespace Kinetix.Tools.Analyzers.Diagnostics.Coverage;
+
+/// <summary>
+/// Détecte les méthodes de DAL utilisant GetSqlCommand ou GetBroker.
+/// Ce diagnostic est Hidden car il ne correspond pas à un warning.
+/// Le CodeFix AddDalUnitTestRefactoringFix utilise ce diagnostic pour proposer l'ajout du test unitaire s'il manque.
+/// </summary>
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+public class KTA1300_DalMethodWithSqlServerCommandAnalyser : DiagnosticAnalyzer
 {
-    /// <summary>
-    /// Détecte les méthodes de DAL utilisant GetSqlCommand ou GetBroker.
-    /// Ce diagnostic est Hidden car il ne correspond pas à un warning.
-    /// Le CodeFix AddDalUnitTestRefactoringFix utilise ce diagnostic pour proposer l'ajout du test unitaire s'il manque.
-    /// </summary>
-    [DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class KTA1300_DalMethodWithSqlServerCommandAnalyser : DiagnosticAnalyzer
+    public const string DiagnosticId = "KTA1300";
+    private const string Category = "Coverage";
+    private static readonly string Description = "Méthode de DAL avec GetSqlCommand ou GetBroker.";
+    private static readonly string MessageFormat = "La méthode utilise GetSqlCommand ou GetBroker";
+
+    private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(
+        DiagnosticId,
+        Title!,
+        MessageFormat,
+        Category,
+        Description,
+        DiagnosticSeverity.Hidden
+    );
+
+    private static readonly string Title = "Méthode de DAL avec GetSqlCommand ou GetBroker";
+
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
+
+    public override void Initialize(AnalysisContext context)
     {
-        public const string DiagnosticId = "KTA1300";
-        private const string Category = "Coverage";
-        private static readonly string Description = "Méthode de DAL avec GetSqlCommand ou GetBroker.";
-        private static readonly string MessageFormat = "La méthode utilise GetSqlCommand ou GetBroker";
+        /* Analyse les identifiants. */
+        context.RegisterSyntaxNodeAction(AnalyzeSyntaxNode, ImmutableArray.Create(SyntaxKind.ClassDeclaration));
+    }
 
-        private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title!, MessageFormat, Category, Description, DiagnosticSeverity.Hidden);
-
-        private static readonly string Title = "Méthode de DAL avec GetSqlCommand ou GetBroker";
-
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
-
-        public override void Initialize(AnalysisContext context)
+    private static void AnalyzeSyntaxNode(SyntaxNodeAnalysisContext context)
+    {
+        /* Obtient le node de déclaration de classe. */
+        if (context.Node is not ClassDeclarationSyntax classDecl)
         {
-            /* Analyse les identifiants. */
-            context.RegisterSyntaxNodeAction(AnalyzeSyntaxNode, ImmutableArray.Create(SyntaxKind.ClassDeclaration));
+            return;
         }
 
-        private static void AnalyzeSyntaxNode(SyntaxNodeAnalysisContext context)
+        /* Récupère le symbole du type. */
+        var classSymbol = context.SemanticModel.GetDeclaredSymbol(classDecl, context.CancellationToken);
+        if (classSymbol == null)
         {
-            /* Obtient le node de déclaration de classe. */
-            if (context.Node is not ClassDeclarationSyntax classDecl)
-            {
-                return;
-            }
-
-            /* Récupère le symbole du type. */
-            var classSymbol = context.SemanticModel.GetDeclaredSymbol(classDecl, context.CancellationToken);
-            if (classSymbol == null)
-            {
-                return;
-            }
-
-            /* Vérifie que la classe est une DAL. */
-            if (!classSymbol.IsDalImplementation())
-            {
-                return;
-            }
-
-            /* Visite de la classe. */
-            var walker = new MethodWithSqlServerCommandWalker(context);
-            walker.Visit(classDecl);
+            return;
         }
 
-        private class MethodWithSqlServerCommandWalker(SyntaxNodeAnalysisContext context) : CSharpSyntaxWalker
+        /* Vérifie que la classe est une DAL. */
+        if (!classSymbol.IsDalImplementation())
         {
-            private MethodDeclarationSyntax? _currentMethDecl;
+            return;
+        }
 
-            public override void VisitInvocationExpression(InvocationExpressionSyntax node)
+        /* Visite de la classe. */
+        var walker = new MethodWithSqlServerCommandWalker(context);
+        walker.Visit(classDecl);
+    }
+
+    private class MethodWithSqlServerCommandWalker(SyntaxNodeAnalysisContext context) : CSharpSyntaxWalker
+    {
+        private MethodDeclarationSyntax? _currentMethDecl;
+
+        public override void VisitInvocationExpression(InvocationExpressionSyntax node)
+        {
+            var symbol = context.SemanticModel.GetSymbolInfo(node, context.CancellationToken).Symbol;
+            if (symbol != null)
             {
-                var symbol = context.SemanticModel.GetSymbolInfo(node, context.CancellationToken).Symbol;
-                if (symbol != null)
+                switch (symbol.Name)
                 {
-                    switch (symbol.Name)
-                    {
-                        case "GetSqlCommand":
-                        case "GetBroker":
-                            /* La méthode est candidate au test unitaire de DAL : on créé le diagnostic. */
-                            if (_currentMethDecl != null)
-                            {
-                                var diagnostic = Diagnostic.Create(Rule, _currentMethDecl.GetMethodLocation());
-                                context.ReportDiagnostic(diagnostic);
-                            }
-                            /* On arrête l'analyse et on sort. */
-                            return;
-                    }
+                    case "GetSqlCommand":
+                    case "GetBroker":
+                        /* La méthode est candidate au test unitaire de DAL : on créé le diagnostic. */
+                        if (_currentMethDecl != null)
+                        {
+                            var diagnostic = Diagnostic.Create(Rule, _currentMethDecl.GetMethodLocation());
+                            context.ReportDiagnostic(diagnostic);
+                        }
+                        /* On arrête l'analyse et on sort. */
+                        return;
                 }
-
-                /* Symbole de DAL non trouvé : on continue à analyser la méthode. */
-                base.VisitInvocationExpression(node);
             }
 
-            public override void VisitMethodDeclaration(MethodDeclarationSyntax node)
-            {
-                _currentMethDecl = node;
-                base.VisitMethodDeclaration(node);
-            }
+            /* Symbole de DAL non trouvé : on continue à analyser la méthode. */
+            base.VisitInvocationExpression(node);
+        }
+
+        public override void VisitMethodDeclaration(MethodDeclarationSyntax node)
+        {
+            _currentMethDecl = node;
+            base.VisitMethodDeclaration(node);
         }
     }
 }

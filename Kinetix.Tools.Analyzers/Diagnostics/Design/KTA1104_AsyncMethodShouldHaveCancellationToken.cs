@@ -14,11 +14,21 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "KTA1104";
     private const string Category = "Design";
-    private static readonly string Description = "La méthode asynchrone ne prend pas de CancellationToken en dernier paramètre.";
-    private static readonly string MessageFormat = "La méthode asynchrone ne prend pas de CancellationToken en dernier paramètre";
-    private static readonly string Title = "Toute méthode asynchrone doit prendre un CancellationToken en dernier paramètre";
+    private static readonly string Description =
+        "La méthode asynchrone ne prend pas de CancellationToken en dernier paramètre.";
+    private static readonly string MessageFormat =
+        "La méthode asynchrone ne prend pas de CancellationToken en dernier paramètre";
+    private static readonly string Title =
+        "Toute méthode asynchrone doit prendre un CancellationToken en dernier paramètre";
 
-    private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title, MessageFormat, Category, Description, DiagnosticSeverity.Info);
+    private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(
+        DiagnosticId,
+        Title,
+        MessageFormat,
+        Category,
+        Description,
+        DiagnosticSeverity.Info
+    );
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
@@ -49,13 +59,33 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
         var semanticModel = context.Compilation.GetSemanticModel(location.SourceTree!);
 
         var cancellationTokenType = context.Compilation.GetTypeByMetadataName("System.Threading.CancellationToken")!;
+        var task = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task")!;
         var genericTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1")!;
+        var valueTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask")!;
         var genericValueTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1")!;
+        var asyncEnumerable = context.Compilation.GetTypeByMetadataName(
+            "System.Collections.Generic.IAsyncEnumerable`1"
+        )!;
 
         var semMethod = semanticModel.GetDeclaredSymbol(method) as IMethodSymbol;
 
-        // Si la méthode a déjà un token en paramètre, c'est bon.
-        if (semMethod?.Parameters.Any(p => p.Type.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability)) ?? true)
+        // Si la méthode ne retourne pas un type asynchrone, on s'en fiche.
+        if (
+            semMethod is null
+            || new[] { asyncEnumerable, genericTask, genericValueTask, task, valueTask }.All(t =>
+                !t.Equals(semMethod.ReturnType.OriginalDefinition, SymbolEqualityComparer.Default)
+            )
+        )
+        {
+            return;
+        }
+
+        // Si la méthode a déjà un token en dernier paramètre, c'est bon.
+        if (
+            semMethod
+                .Parameters.LastOrDefault()
+                ?.Type.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability) == true
+        )
         {
             return;
         }
@@ -72,12 +102,26 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
         {
             if (semanticModel.GetOperation(calledMethod) is IInvocationOperation calledInvocation)
             {
-                if (InvocationMethodTakesAToken(calledInvocation.TargetMethod, calledInvocation.Arguments, cancellationTokenType))
+                if (
+                    InvocationMethodTakesAToken(
+                        calledInvocation.TargetMethod,
+                        calledInvocation.Arguments,
+                        cancellationTokenType
+                    )
+                )
                 {
                     hasCancellableInvocation = true;
                     break;
                 }
-                else if (MethodHasCancellationTokenOverload(context.Compilation, calledInvocation.TargetMethod, cancellationTokenType, genericTask, genericValueTask))
+                else if (
+                    MethodHasCancellationTokenOverload(
+                        context.Compilation,
+                        calledInvocation.TargetMethod,
+                        cancellationTokenType,
+                        genericTask,
+                        genericValueTask
+                    )
+                )
                 {
                     hasCancellableInvocation = true;
                     break;
@@ -91,33 +135,54 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
         }
     }
 
-    private bool InvocationMethodTakesAToken(IMethodSymbol method, ImmutableArray<IArgumentOperation> arguments, INamedTypeSymbol cancellationTokenType)
+    private bool InvocationMethodTakesAToken(
+        IMethodSymbol method,
+        ImmutableArray<IArgumentOperation> arguments,
+        INamedTypeSymbol cancellationTokenType
+    )
     {
-        return
-            method.Parameters is [.., IParameterSymbol lastParameter] &&
-            (InvocationIgnoresOptionalCancellationToken(lastParameter, arguments, cancellationTokenType) ||
-            InvocationIsUsingParamsCancellationToken(lastParameter, arguments, cancellationTokenType));
+        return method.Parameters is [.., IParameterSymbol lastParameter]
+            && (
+                InvocationIgnoresOptionalCancellationToken(lastParameter, arguments, cancellationTokenType)
+                || InvocationIsUsingParamsCancellationToken(lastParameter, arguments, cancellationTokenType)
+            );
     }
 
-    private bool InvocationIgnoresOptionalCancellationToken(IParameterSymbol lastParameter, ImmutableArray<IArgumentOperation> arguments, INamedTypeSymbol cancellationTokenType)
+    private bool InvocationIgnoresOptionalCancellationToken(
+        IParameterSymbol lastParameter,
+        ImmutableArray<IArgumentOperation> arguments,
+        INamedTypeSymbol cancellationTokenType
+    )
     {
-        if (lastParameter.Type.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability) &&
-            lastParameter.IsOptional)
+        if (
+            lastParameter.Type.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability)
+            && lastParameter.IsOptional
+        )
         {
             return AnyArgument(
                 arguments,
-                static (a, cancellationTokenType) => a.Parameter != null && a.Parameter.Type.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability) && a.ArgumentKind == ArgumentKind.DefaultValue,
-                cancellationTokenType);
+                static (a, cancellationTokenType) =>
+                    a.Parameter != null
+                    && a.Parameter.Type.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability)
+                    && a.ArgumentKind == ArgumentKind.DefaultValue,
+                cancellationTokenType
+            );
         }
 
         return false;
     }
 
-    private bool InvocationIsUsingParamsCancellationToken(IParameterSymbol lastParameter, ImmutableArray<IArgumentOperation> arguments, INamedTypeSymbol cancellationTokenType)
+    private bool InvocationIsUsingParamsCancellationToken(
+        IParameterSymbol lastParameter,
+        ImmutableArray<IArgumentOperation> arguments,
+        INamedTypeSymbol cancellationTokenType
+    )
     {
-        if (lastParameter.IsParams &&
-               lastParameter.Type is IArrayTypeSymbol arrayTypeSymbol &&
-               arrayTypeSymbol.ElementType.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability))
+        if (
+            lastParameter.IsParams
+            && lastParameter.Type is IArrayTypeSymbol arrayTypeSymbol
+            && arrayTypeSymbol.ElementType.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability)
+        )
         {
             var paramsArgument = arguments.FirstOrDefault(a => a.ArgumentKind == ArgumentKind.ParamArray);
             if (paramsArgument?.Value is IArrayCreationOperation arrayOperation)
@@ -129,7 +194,11 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
         return false;
     }
 
-    private static bool AnyArgument<TArg>(ImmutableArray<IArgumentOperation> arguments, Func<IArgumentOperation, TArg, bool> predicate, TArg arg)
+    private static bool AnyArgument<TArg>(
+        ImmutableArray<IArgumentOperation> arguments,
+        Func<IArgumentOperation, TArg, bool> predicate,
+        TArg arg
+    )
     {
         for (int i = arguments.Length - 1; i >= 0; i--)
         {
@@ -142,12 +211,27 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
         return false;
     }
 
-    private bool MethodHasCancellationTokenOverload(Compilation compilation, IMethodSymbol method, INamedTypeSymbol cancellationTokenType, INamedTypeSymbol genericTask, INamedTypeSymbol genericValueTask)
+    private bool MethodHasCancellationTokenOverload(
+        Compilation compilation,
+        IMethodSymbol method,
+        INamedTypeSymbol cancellationTokenType,
+        INamedTypeSymbol genericTask,
+        INamedTypeSymbol genericValueTask
+    )
     {
-        var overload = method.ContainingType
-            .GetMembers(method.Name)
+        var overload = method
+            .ContainingType.GetMembers(method.Name)
             .OfType<IMethodSymbol>()
-            .FirstOrDefault(methodToCompare => HasSameParametersPlusCancellationToken(compilation, method, methodToCompare, cancellationTokenType, genericTask, genericValueTask));
+            .FirstOrDefault(methodToCompare =>
+                HasSameParametersPlusCancellationToken(
+                    compilation,
+                    method,
+                    methodToCompare,
+                    cancellationTokenType,
+                    genericTask,
+                    genericValueTask
+                )
+            );
 
         return overload != null;
 
@@ -158,12 +242,19 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
             IMethodSymbol methodToCompare,
             INamedTypeSymbol cancellationTokenType,
             INamedTypeSymbol genericTask,
-            INamedTypeSymbol genericValueTask)
+            INamedTypeSymbol genericValueTask
+        )
         {
             // Avoid comparing to itself, or when there are no parameters, or when the last parameter is not a ct
-            if (originalMethod.Equals(methodToCompare, SymbolEqualityComparer.IncludeNullability) ||
-                methodToCompare.Parameters.Count(p => p.Type.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability)) != 1 ||
-                !methodToCompare.Parameters[^1].Type.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability))
+            if (
+                originalMethod.Equals(methodToCompare, SymbolEqualityComparer.IncludeNullability)
+                || methodToCompare.Parameters.Count(p =>
+                    p.Type.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability)
+                ) != 1
+                || !methodToCompare
+                    .Parameters[^1]
+                    .Type.Equals(cancellationTokenType, SymbolEqualityComparer.IncludeNullability)
+            )
             {
                 return false;
             }
@@ -172,7 +263,10 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
             var methodToCompareWithAllParameters = (methodToCompare.ReducedFrom ?? methodToCompare).OriginalDefinition;
 
             // Ensure parameters only differ by one - the ct
-            if (originalMethodWithAllParameters.Parameters.Length != methodToCompareWithAllParameters.Parameters.Length - 1)
+            if (
+                originalMethodWithAllParameters.Parameters.Length
+                != methodToCompareWithAllParameters.Parameters.Length - 1
+            )
             {
                 return false;
             }
@@ -196,10 +290,13 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
             {
                 // Generic Task-like types are special since awaiting them essentially erases the task-like type.
                 // If both types are Task-like we will warn if their generic arguments are convertable to each other.
-                if (IsTaskLikeType(originalReturnType) && IsTaskLikeType(toCompareReturnType) &&
-                    originalReturnType is INamedTypeSymbol originalNamedType &&
-                    toCompareReturnType is INamedTypeSymbol toCompareNamedType &&
-                    TypeArgumentsAreConvertable(originalNamedType, toCompareNamedType))
+                if (
+                    IsTaskLikeType(originalReturnType)
+                    && IsTaskLikeType(toCompareReturnType)
+                    && originalReturnType is INamedTypeSymbol originalNamedType
+                    && toCompareReturnType is INamedTypeSymbol toCompareNamedType
+                    && TypeArgumentsAreConvertable(originalNamedType, toCompareNamedType)
+                )
                 {
                     return true;
                 }
@@ -211,14 +308,18 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
 
             bool IsTaskLikeType(ITypeSymbol typeSymbol)
             {
-                if (genericTask is not null &&
-                    typeSymbol.OriginalDefinition.Equals(genericTask, SymbolEqualityComparer.IncludeNullability))
+                if (
+                    genericTask is not null
+                    && typeSymbol.OriginalDefinition.Equals(genericTask, SymbolEqualityComparer.IncludeNullability)
+                )
                 {
                     return true;
                 }
 
-                if (genericValueTask is not null &&
-                    typeSymbol.OriginalDefinition.Equals(genericValueTask, SymbolEqualityComparer.IncludeNullability))
+                if (
+                    genericValueTask is not null
+                    && typeSymbol.OriginalDefinition.Equals(genericValueTask, SymbolEqualityComparer.IncludeNullability)
+                )
                 {
                     return true;
                 }
@@ -228,9 +329,7 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
 
             bool TypeArgumentsAreConvertable(INamedTypeSymbol left, INamedTypeSymbol right)
             {
-                if (left.Arity != 1 ||
-                    right.Arity != 1 ||
-                    left.Arity != right.Arity)
+                if (left.Arity != 1 || right.Arity != 1 || left.Arity != right.Arity)
                 {
                     return false;
                 }
@@ -247,6 +346,6 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
         }
     }
 
-    public static bool IsAssignableTo(ITypeSymbol fromSymbol, ITypeSymbol toSymbol, Compilation compilation)
-        => fromSymbol != null && toSymbol != null && compilation.ClassifyCommonConversion(fromSymbol, toSymbol).IsImplicit;
+    public static bool IsAssignableTo(ITypeSymbol fromSymbol, ITypeSymbol toSymbol, Compilation compilation) =>
+        fromSymbol != null && toSymbol != null && compilation.ClassifyCommonConversion(fromSymbol, toSymbol).IsImplicit;
 }

@@ -1,221 +1,207 @@
 ﻿using System.Collections;
 using Kinetix.Modeling;
 
-namespace Kinetix.Tools.TestUtils
+namespace Kinetix.Tools.TestUtils.Helpers;
+
+/// <summary>
+/// Extensions de l'API d'assertions.
+/// </summary>
+public static class AssertExt
 {
     /// <summary>
-    /// Extensions de l'API d'assertions.
+    /// Vérifie que deux ont les mêmes propriétés.
     /// </summary>
-    public static class AssertExt
+    /// <typeparam name="T">Type des éléments. Doit être un type avec des propriétés.</typeparam>
+    /// <param name="expected">Bean attendu.</param>
+    /// <param name="actual">Bean constaté.</param>
+    public static void AreBeanEqual<T>(T expected, T actual)
     {
-        /// <summary>
-        /// Vérifie que deux ont les mêmes propriétés.
-        /// </summary>
-        /// <typeparam name="T">Type des éléments. Doit être un type avec des propriétés.</typeparam>
-        /// <param name="expected">Bean attendu.</param>
-        /// <param name="actual">Bean constaté.</param>
-        public static void AreBeanEqual<T>(T expected, T actual)
+        AreBeanEqualCore(expected, actual);
+    }
+
+    /// <summary>
+    /// Vérifie que deux collections ont les mêmes éléments avec les mêmes propriétés dans le même ordre.
+    /// </summary>
+    /// <typeparam name="T">Type des éléments. Doit être un type avec des propriétés.</typeparam>
+    /// <param name="expected">Collection attendue.</param>
+    /// <param name="actual">Collection constatée.</param>
+    public static void AreCollectionPropertiesEqual<T>(ICollection<T> expected, ICollection<T> actual)
+    {
+        if (expected.Count != actual.Count)
         {
-            AreBeanEqualCore(expected, actual);
+            throw new ArgumentException("Les deux collections n'ont pas le même nombre d'éléments.");
         }
 
-        /// <summary>
-        /// Vérifie que deux collections ont les mêmes éléments avec les mêmes propriétés dans le même ordre.
-        /// </summary>
-        /// <typeparam name="T">Type des éléments. Doit être un type avec des propriétés.</typeparam>
-        /// <param name="expected">Collection attendue.</param>
-        /// <param name="actual">Collection constatée.</param>
-        public static void AreCollectionPropertiesEqual<T>(
-            ICollection<T> expected,
-            ICollection<T> actual
-        )
+        if (expected.Count != 0)
         {
-            if (expected.Count != actual.Count)
-            {
-                throw new ArgumentException(
-                    "Les deux collections n'ont pas le même nombre d'éléments."
-                );
-            }
+            var beanDef = BeanDescriptor.GetDefinition(expected.First().GetType());
 
-            if (expected.Count != 0)
+            var expectedValue = expected.GetEnumerator();
+            var actualValue = actual.GetEnumerator();
+            for (var i = 0; i < expected.Count; i++)
             {
-                var beanDef = BeanDescriptor.GetDefinition(expected.First().GetType());
-
-                var expectedValue = expected.GetEnumerator();
-                var actualValue = actual.GetEnumerator();
-                for (var i = 0; i < expected.Count; i++)
+                expectedValue.MoveNext();
+                actualValue.MoveNext();
+                foreach (var prop in beanDef.Properties)
                 {
-                    expectedValue.MoveNext();
-                    actualValue.MoveNext();
-                    foreach (var prop in beanDef.Properties)
-                    {
-                        Assert.AreEqual(
-                            prop.GetValue(expectedValue.Current),
-                            prop.GetValue(actualValue.Current),
-                            "Index : " + i + ". Propriété : " + prop.PropertyName
-                        );
-                    }
+                    Assert.AreEqual(
+                        prop.GetValue(expectedValue.Current),
+                        prop.GetValue(actualValue.Current),
+                        "Index : " + i + ". Propriété : " + prop.PropertyName
+                    );
                 }
             }
         }
+    }
 
-        /// <summary>
-        /// Vérifie que deux collections ont les mêmes éléments dans le même ordre.
-        /// </summary>
-        /// <typeparam name="T">Type des éléments.</typeparam>
-        /// <param name="expected">Collection attendue.</param>
-        /// <param name="actual">Collection constatée.</param>
-        public static void AreEqual<T>(ICollection<T> expected, ICollection<T> actual)
+    /// <summary>
+    /// Vérifie que deux collections ont les mêmes éléments dans le même ordre.
+    /// </summary>
+    /// <typeparam name="T">Type des éléments.</typeparam>
+    /// <param name="expected">Collection attendue.</param>
+    /// <param name="actual">Collection constatée.</param>
+    public static void AreEqual<T>(ICollection<T> expected, ICollection<T> actual)
+    {
+        CollectionAssert.AreEqual((ICollection)expected, (ICollection)actual);
+    }
+
+    /// <summary>
+    /// Vérifie que deux collections ont les mêmes éléments dans le même ordre.
+    /// </summary>
+    /// <typeparam name="T">Type des éléments.</typeparam>
+    /// <param name="expected">Collection attendue.</param>
+    /// <param name="actual">Collection constatée.</param>
+    public static void AreEqual<T>(ICollection<T> expected, params T[] actual)
+    {
+        CollectionAssert.AreEqual((ICollection)expected, actual);
+    }
+
+    /// <summary>
+    /// Vérifie qu'un argument est plus grand qu'un autre ou égal.
+    /// </summary>
+    /// <typeparam name="T">Type des arguments.</typeparam>
+    /// <param name="arg1">Argument 1.</param>
+    /// <param name="arg2">Argument 2.</param>
+    public static void GreaterOrEqualThan<T>(T arg1, T arg2)
+        where T : IComparable<T>
+    {
+        if (arg1.CompareTo(arg2) >= 0)
         {
-            CollectionAssert.AreEqual((ICollection)expected, (ICollection)actual);
+            return;
         }
 
-        /// <summary>
-        /// Vérifie que deux collections ont les mêmes éléments dans le même ordre.
-        /// </summary>
-        /// <typeparam name="T">Type des éléments.</typeparam>
-        /// <param name="expected">Collection attendue.</param>
-        /// <param name="actual">Collection constatée.</param>
-        public static void AreEqual<T>(ICollection<T> expected, params T[] actual)
+        Assert.Fail($"Il était attendu que {arg1} >= {arg2}");
+    }
+
+    /// <summary>
+    /// Vérifie qu'un argument est plus grand qu'un autre.
+    /// </summary>
+    /// <typeparam name="T">Type des arguments.</typeparam>
+    /// <param name="arg1">Argument 1.</param>
+    /// <param name="arg2">Argument 2.</param>
+    public static void GreaterThan<T>(T arg1, T arg2)
+        where T : IComparable<T>
+    {
+        if (arg1.CompareTo(arg2) > 0)
         {
-            CollectionAssert.AreEqual((ICollection)expected, actual);
+            return;
         }
 
-        /// <summary>
-        /// Vérifie qu'un argument est plus grand qu'un autre ou égal.
-        /// </summary>
-        /// <typeparam name="T">Type des arguments.</typeparam>
-        /// <param name="arg1">Argument 1.</param>
-        /// <param name="arg2">Argument 2.</param>
-        public static void GreaterOrEqualThan<T>(T arg1, T arg2)
-            where T : IComparable<T>
-        {
-            if (arg1.CompareTo(arg2) >= 0)
-            {
-                return;
-            }
+        Assert.Fail($"Il était attendu que {arg1} > {arg2}");
+    }
 
-            Assert.Fail($"Il était attendu que {arg1} >= {arg2}");
+    /// <summary>
+    /// Vérifie qu'un argument est plus petit qu'un autre.
+    /// </summary>
+    /// <typeparam name="T">Type des arguments.</typeparam>
+    /// <param name="arg1">Argument 1.</param>
+    /// <param name="arg2">Argument 2.</param>
+    public static void LesserOrEqualThan<T>(T arg1, T arg2)
+        where T : IComparable<T>
+    {
+        if (arg1.CompareTo(arg2) <= 0)
+        {
+            return;
         }
 
-        /// <summary>
-        /// Vérifie qu'un argument est plus grand qu'un autre.
-        /// </summary>
-        /// <typeparam name="T">Type des arguments.</typeparam>
-        /// <param name="arg1">Argument 1.</param>
-        /// <param name="arg2">Argument 2.</param>
-        public static void GreaterThan<T>(T arg1, T arg2)
-            where T : IComparable<T>
-        {
-            if (arg1.CompareTo(arg2) > 0)
-            {
-                return;
-            }
+        Assert.Fail($"Il était attendu que {arg1} <= {arg2}");
+    }
 
-            Assert.Fail($"Il était attendu que {arg1} > {arg2}");
+    /// <summary>
+    /// Vérifie qu'un argument est plus petit qu'un autre.
+    /// </summary>
+    /// <typeparam name="T">Type des arguments.</typeparam>
+    /// <param name="arg1">Argument 1.</param>
+    /// <param name="arg2">Argument 2.</param>
+    public static void LesserThan<T>(T arg1, T arg2)
+        where T : IComparable<T>
+    {
+        if (arg1.CompareTo(arg2) < 0)
+        {
+            return;
         }
 
-        /// <summary>
-        /// Vérifie qu'un argument est plus petit qu'un autre.
-        /// </summary>
-        /// <typeparam name="T">Type des arguments.</typeparam>
-        /// <param name="arg1">Argument 1.</param>
-        /// <param name="arg2">Argument 2.</param>
-        public static void LesserOrEqualThan<T>(T arg1, T arg2)
-            where T : IComparable<T>
-        {
-            if (arg1.CompareTo(arg2) <= 0)
-            {
-                return;
-            }
+        Assert.Fail($"Il était attendu que {arg1} <= {arg2}");
+    }
 
-            Assert.Fail($"Il était attendu que {arg1} <= {arg2}");
+    /// <summary>
+    /// Teste qu'une action donnée renvoie une exception d'un type donné.
+    /// Si l'exception attendue est levée, on la renvoie.
+    /// Si l'exception est d'un autre type, on met le test courant en erreur.
+    /// Si l'exception n'est pas levé, on met le test courant en erreur.
+    /// </summary>
+    /// <typeparam name="TExpected">Type de l'exception attendue.</typeparam>
+    /// <param name="action">Action à tester.</param>
+    /// <returns>Instance de l'exception.</returns>
+    public static TExpected Throws<TExpected>(Action action)
+        where TExpected : Exception
+    {
+        try
+        {
+            action();
         }
-
-        /// <summary>
-        /// Vérifie qu'un argument est plus petit qu'un autre.
-        /// </summary>
-        /// <typeparam name="T">Type des arguments.</typeparam>
-        /// <param name="arg1">Argument 1.</param>
-        /// <param name="arg2">Argument 2.</param>
-        public static void LesserThan<T>(T arg1, T arg2)
-            where T : IComparable<T>
+        catch (TExpected ex)
         {
-            if (arg1.CompareTo(arg2) < 0)
-            {
-                return;
-            }
-
-            Assert.Fail($"Il était attendu que {arg1} <= {arg2}");
+            return ex;
         }
-
-        /// <summary>
-        /// Teste qu'une action donnée renvoie une exception d'un type donné.
-        /// Si l'exception attendue est levée, on la renvoie.
-        /// Si l'exception est d'un autre type, on met le test courant en erreur.
-        /// Si l'exception n'est pas levé, on met le test courant en erreur.
-        /// </summary>
-        /// <typeparam name="TExpected">Type de l'exception attendue.</typeparam>
-        /// <param name="action">Action à tester.</param>
-        /// <returns>Instance de l'exception.</returns>
-        public static TExpected Throws<TExpected>(Action action)
-            where TExpected : Exception
+        catch (Exception ex)
         {
-            try
-            {
-                action();
-            }
-            catch (TExpected ex)
-            {
-                return ex;
-            }
-            catch (Exception ex)
-            {
-                Assert.Fail(
-                    $"Attendu : exception de type {typeof(TExpected).FullName} ; constaté : {ex.GetType()}"
-                );
-                return null;
-            }
-
-            Assert.Fail(
-                $"Attendu : exception de type {typeof(TExpected).FullName} ; constaté : pas d'exception"
-            );
+            Assert.Fail($"Attendu : exception de type {typeof(TExpected).FullName} ; constaté : {ex.GetType()}");
             return null;
         }
 
-        /// <summary>
-        /// Vérifie que deux ont les mêmes propriétés.
-        /// </summary>
-        /// <param name="expected">Bean attendu.</param>
-        /// <param name="actual">Bean constaté.</param>
-        private static void AreBeanEqualCore(object expected, object actual)
+        Assert.Fail($"Attendu : exception de type {typeof(TExpected).FullName} ; constaté : pas d'exception");
+        return null;
+    }
+
+    /// <summary>
+    /// Vérifie que deux ont les mêmes propriétés.
+    /// </summary>
+    /// <param name="expected">Bean attendu.</param>
+    /// <param name="actual">Bean constaté.</param>
+    private static void AreBeanEqualCore(object expected, object actual)
+    {
+        if (expected == null && actual == null)
         {
-            if (expected == null && actual == null)
+            return;
+        }
+
+        if (expected == null || actual == null)
+        {
+            Assert.Fail("Un des beans est null.");
+        }
+
+        var beanDef = BeanDescriptor.GetDefinition(expected.GetType());
+
+        foreach (var prop in beanDef.Properties)
+        {
+            if (prop.PrimitiveType != null)
             {
-                return;
+                Assert.AreEqual(prop.GetValue(expected), prop.GetValue(actual), $"Propriété {prop.PropertyName}");
             }
-
-            if (expected == null || actual == null)
+            else
             {
-                Assert.Fail("Un des beans est null.");
-            }
-
-            var beanDef = BeanDescriptor.GetDefinition(expected.GetType());
-
-            foreach (var prop in beanDef.Properties)
-            {
-                if (prop.PrimitiveType != null)
-                {
-                    Assert.AreEqual(
-                        prop.GetValue(expected),
-                        prop.GetValue(actual),
-                        $"Propriété {prop.PropertyName}"
-                    );
-                }
-                else
-                {
-                    AreBeanEqualCore(prop.GetValue(expected), prop.GetValue(actual));
-                }
+                AreBeanEqualCore(prop.GetValue(expected), prop.GetValue(actual));
             }
         }
     }

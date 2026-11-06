@@ -34,11 +34,7 @@ await Task.WhenAll(
             return;
         }
 
-        var classDecl = syntaxTree
-            .GetRoot()
-            .DescendantNodes()
-            .OfType<ClassDeclarationSyntax>()
-            .FirstOrDefault();
+        var classDecl = syntaxTree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>().FirstOrDefault();
         if (classDecl == null)
         {
             return;
@@ -52,9 +48,7 @@ await Task.WhenAll(
             return;
         }
 
-        var testProject = solution.Projects.SingleOrDefault(p =>
-            p.Name == $"{doc.Project.Name}.Test"
-        );
+        var testProject = solution.Projects.SingleOrDefault(p => p.Name == $"{doc.Project.Name}.Test");
         if (testProject == null)
         {
             return;

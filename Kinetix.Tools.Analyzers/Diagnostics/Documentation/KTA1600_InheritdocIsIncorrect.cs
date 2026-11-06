@@ -5,67 +5,76 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kinetix.Tools.Analyzers.Diagnostics.Documentation
+namespace Kinetix.Tools.Analyzers.Diagnostics.Documentation;
+
+/// <summary>
+/// La classe d'analyseur pour la règle InheritDoc.
+/// Permet d'enregistrer des diagnostics sur les fichiers sources.
+/// </summary>
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+public class KTA1600_InheritdocIsIncorrect : DiagnosticAnalyzer
 {
+    public const string DiagnosticId = "KTA1600";
+    private const string Category = "Documentation";
+    private const string MessageFormat = "Le commentaire <inheritdoc /> est manquant ou erroné";
+    private const string Description = "Le commentaire <inheritdoc /> doit être correct.";
+    private const string Title = "Le commentaire <inheritdoc /> doit être correct";
+
+    private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(
+        DiagnosticId,
+        Title,
+        MessageFormat,
+        Category,
+        Description
+    );
+
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
+
     /// <summary>
-    /// La classe d'analyseur pour la règle InheritDoc.
-    /// Permet d'enregistrer des diagnostics sur les fichiers sources.
+    /// Méthode d'initialisation de l'analyseur.
     /// </summary>
-    [DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class KTA1600_InheritdocIsIncorrect : DiagnosticAnalyzer
+    /// <param name="context">Le contexte.</param>
+    public override void Initialize(AnalysisContext context)
     {
-        public const string DiagnosticId = "KTA1600";
-        private const string Category = "Documentation";
-        private const string MessageFormat = "Le commentaire <inheritdoc /> est manquant ou erroné";
-        private const string Description = "Le commentaire <inheritdoc /> doit être correct.";
-        private const string Title = "Le commentaire <inheritdoc /> doit être correct";
+        context.RegisterSymbolAction(AnalyserMéthode, SymbolKind.Method);
+    }
 
-        private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title, MessageFormat, Category, Description);
-
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
-
-        /// <summary>
-        /// Méthode d'initialisation de l'analyseur.
-        /// </summary>
-        /// <param name="context">Le contexte.</param>
-        public override void Initialize(AnalysisContext context)
+    /// <summary>
+    /// Trouve des diagnostics sur une méthode.
+    /// </summary>
+    /// <param name="contexte">Le contexte.</param>
+    private static void AnalyserMéthode(SymbolAnalysisContext contexte)
+    {
+        if (InheritDocEstCorrect(contexte) != null)
         {
-            context.RegisterSymbolAction(AnalyserMéthode, SymbolKind.Method);
+            contexte.ReportDiagnostic(Diagnostic.Create(Rule, contexte.Symbol.Locations[0]));
+        }
+    }
+
+    /// <summary>
+    /// Détermine si le inheritDoc du symbole méthode est présent et correct.
+    /// </summary>
+    /// <param name="context">Le contexte du symbole.</param>
+    /// <returns>La ligne inheritDoc correcte dans le cas où l'actuelle est manquante/incorrecte, sinon null.</returns>
+    private static string? InheritDocEstCorrect(SymbolAnalysisContext context)
+    {
+        // On récupère les informations nécessaires du contexte du symbole.
+        var location = context.Symbol.Locations.First();
+        var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree!);
+        var racine = location.SourceTree?.GetRoot();
+
+        if (racine?.FindNode(location.SourceSpan) is not MethodDeclarationSyntax méthode)
+        {
+            return null;
         }
 
-        /// <summary>
-        /// Trouve des diagnostics sur une méthode.
-        /// </summary>
-        /// <param name="contexte">Le contexte.</param>
-        private static void AnalyserMéthode(SymbolAnalysisContext contexte)
-        {
-            if (InheritDocEstCorrect(contexte) != null)
-            {
-                contexte.ReportDiagnostic(Diagnostic.Create(Rule, contexte.Symbol.Locations[0]));
-            }
-        }
-
-        /// <summary>
-        /// Détermine si le inheritDoc du symbole méthode est présent et correct.
-        /// </summary>
-        /// <param name="context">Le contexte du symbole.</param>
-        /// <returns>La ligne inheritDoc correcte dans le cas où l'actuelle est manquante/incorrecte, sinon null.</returns>
-        private static string? InheritDocEstCorrect(SymbolAnalysisContext context)
-        {
-            // On récupère les informations nécessaires du contexte du symbole.
-            var location = context.Symbol.Locations.First();
-            var modèleSémantique = context.Compilation.GetSemanticModel(location.SourceTree!);
-            var racine = location.SourceTree?.GetRoot();
-
-            if (racine?.FindNode(location.SourceSpan) is not MethodDeclarationSyntax méthode)
-            {
-                return null;
-            }
-
-            // On ignore le code généré.
-            return (méthode.Parent as ClassDeclarationSyntax)?.AttributeLists.Any(node => node.ChildNodes().Any(node2 => node2.ToString().Contains("GeneratedCode"))) ?? true
-                ? null
-                : Inheritdoc.InheritDocEstCorrect(modèleSémantique, méthode);
-        }
+        // On ignore le code généré.
+        return
+            (méthode.Parent as ClassDeclarationSyntax)?.AttributeLists.Any(node =>
+                node.ChildNodes().Any(node2 => node2.ToString().Contains("GeneratedCode"))
+            )
+            ?? true
+            ? null
+            : Inheritdoc.InheritDocEstCorrect(modèleSémantique, méthode);
     }
 }

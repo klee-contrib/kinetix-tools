@@ -11,78 +11,89 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Kinetix.Tools.Analyzers.CodeFixes
+namespace Kinetix.Tools.Analyzers.CodeFixes;
+
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ReplaceImplementationWithContractFix))]
+[Shared]
+public class ReplaceImplementationWithContractFix : CodeFixProvider
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ReplaceImplementationWithContractFix))]
-    [Shared]
-    public class ReplaceImplementationWithContractFix : CodeFixProvider
+    private const string Title = "Remplacer avec le contrat {0}";
+
+    public sealed override ImmutableArray<string> FixableDiagnosticIds =>
+        [KTA1100_DoNotDependOnServiceImplementationAnalyzer.DiagnosticId];
+
+    public sealed override FixAllProvider GetFixAllProvider()
     {
-        private const string Title = "Remplacer avec le contrat {0}";
+        return WellKnownFixAllProviders.BatchFixer;
+    }
 
-        public sealed override ImmutableArray<string> FixableDiagnosticIds => [KTA1100_DoNotDependOnServiceImplementationAnalyzer.DiagnosticId];
-
-        public sealed override FixAllProvider GetFixAllProvider()
+    public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
+    {
+        /* Récupèrer le node du paramètre. */
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+        var diagnostic = context.Diagnostics.First();
+        var diagnosticSpan = diagnostic.Location.SourceSpan;
+        if (root?.FindNode(diagnosticSpan).Parent is not ParameterSyntax paramNode)
         {
-            return WellKnownFixAllProviders.BatchFixer;
+            return;
         }
 
-        public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
+        /* Retrouver le type du paramètre */
+        var currentType = paramNode.Type!;
+        var semanticModel = await context
+            .Document.GetSemanticModelAsync(context.CancellationToken)
+            .ConfigureAwait(false);
+        var currentTypeInfo = semanticModel.GetTypeInfo(currentType);
+
+        /* Trouver les contrats de service candidats pour le fix. */
+        var candidates = currentTypeInfo.Type!.AllInterfaces.Where(x => x.IsServiceContract());
+
+        /* Enregistrer les fix de remplacement */
+        foreach (var candidate in candidates)
         {
-            /* Récupèrer le node du paramètre. */
-            var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-            var diagnostic = context.Diagnostics.First();
-            var diagnosticSpan = diagnostic.Location.SourceSpan;
-            if (root?.FindNode(diagnosticSpan).Parent is not ParameterSyntax paramNode)
-            {
-                return;
-            }
+            var titleFormat = string.Format(Title, candidate.Name);
+            context.RegisterCodeFix(
+                CodeAction.Create(
+                    title: titleFormat,
+                    createChangedDocument: c => ReplaceWithType(context.Document, paramNode, c, candidate),
+                    equivalenceKey: titleFormat
+                ),
+                diagnostic
+            );
+        }
+    }
 
-            /* Retrouver le type du paramètre */
-            var currentType = paramNode.Type!;
-            var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
-            var currentTypeInfo = semanticModel.GetTypeInfo(currentType);
+    private static async Task<Document> ReplaceWithType(
+        Document document,
+        ParameterSyntax paramNode,
+        CancellationToken cancellationToken,
+        INamedTypeSymbol replacedType
+    )
+    {
+        /* Créé un node pour le nouveau type. */
+        var newTypeSyntax = SyntaxFactory.IdentifierName(SyntaxFactory.Identifier(replacedType.Name));
 
-            /* Trouver les contrats de service candidats pour le fix. */
-            var candidates = currentTypeInfo.Type!.AllInterfaces.Where(x => x.IsServiceContract());
+        /* Remplace le type du paramètre. */
+        var newParamNode = paramNode.WithType(newTypeSyntax);
 
-            /* Enregistrer les fix de remplacement */
-            foreach (var candidate in candidates)
-            {
-                var titleFormat = string.Format(Title, candidate.Name);
-                context.RegisterCodeFix(
-                    CodeAction.Create(
-                        title: titleFormat,
-                        createChangedDocument: c => ReplaceWithType(context.Document, paramNode, c, candidate),
-                        equivalenceKey: titleFormat),
-                    diagnostic);
-            }
+        // TODO : gérer le trivia.
+
+        // Replace the old local declaration with the new local declaration.
+        var oldRoot = await document.GetSyntaxRootAsync(cancellationToken);
+        if (oldRoot == null)
+        {
+            return document;
         }
 
-        private static async Task<Document> ReplaceWithType(Document document, ParameterSyntax paramNode, CancellationToken cancellationToken, INamedTypeSymbol replacedType)
+        var newRoot = oldRoot.ReplaceNode(paramNode, newParamNode);
+
+        /* Ajoute le using. */
+        if (!replacedType.ContainingNamespace.IsGlobalNamespace)
         {
-            /* Créé un node pour le nouveau type. */
-            var newTypeSyntax = SyntaxFactory.IdentifierName(
-                SyntaxFactory.Identifier(replacedType.Name));
-
-            /* Remplace le type du paramètre. */
-            var newParamNode = paramNode.WithType(newTypeSyntax);
-
-            // TODO : gérer le trivia.
-
-            // Replace the old local declaration with the new local declaration.
-            var oldRoot = await document.GetSyntaxRootAsync(cancellationToken);
-            if (oldRoot == null)
-            {
-                return document;
-            }
-
-            var newRoot = oldRoot.ReplaceNode(paramNode, newParamNode);
-
-            /* Ajoute le using. */
             var replacedTypeNamespace = replacedType.ContainingNamespace.ToString();
             newRoot = newRoot.AddUsing(replacedTypeNamespace);
-
-            return document.WithSyntaxRoot(newRoot);
         }
+
+        return document.WithSyntaxRoot(newRoot);
     }
 }

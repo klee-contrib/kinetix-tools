@@ -1,47 +1,30 @@
 ﻿using System.Collections.Generic;
 
-namespace Kinetix.Tools.Analyzers.CodeFixes.Test
+namespace Kinetix.Tools.Analyzers.CodeFixes.Test;
+
+/// <summary>
+/// Paramètre d'une méthode de DAL.
+/// </summary>
+public class DalMethodParam
 {
     /// <summary>
-    /// Paramètre d'une méthode de DAL.
+    /// Nom du paramètre.
     /// </summary>
-    public class DalMethodParam
-    {
-        /// <summary>
-        /// Nom du paramètre.
-        /// </summary>
-        public required string Name
-        {
-            get;
-            set;
-        }
+    public required string Name { get; set; }
 
-        /// <summary>
-        /// Expression de la valeur du paramètre.
-        /// Rendue telle quelle dans le template de la classe de test.
-        /// </summary>
-        public required string Value
-        {
-            get;
-            set;
-        }
+    /// <summary>
+    /// Expression de la valeur du paramètre.
+    /// Rendue telle quelle dans le template de la classe de test.
+    /// </summary>
+    public required string Value { get; set; }
 
-        /// <summary>
-        /// Indique si le paramètre est de type primitif (entier / string / etc.).
-        /// </summary>
-        public bool IsPrimitive
-        {
-            get;
-            set;
-        }
+    /// <summary>
+    /// Indique si le paramètre est de type primitif (entier / string / etc.).
+    /// </summary>
+    public bool IsPrimitive { get; set; }
 
-        /// <summary>
-        /// Liste des usings spécifiques aux projets.
-        /// </summary>
-        public ICollection<string> SpecificUsings
-        {
-            get;
-            set;
-        } = [];
-    }
+    /// <summary>
+    /// Liste des usings spécifiques aux projets.
+    /// </summary>
+    public ICollection<string> SpecificUsings { get; set; } = [];
 }

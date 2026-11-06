@@ -5,150 +5,204 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Kinetix.Tools.Analyzers.Common.Ordering
+namespace Kinetix.Tools.Analyzers.Common.Ordering;
+
+/// <summary>
+/// Classe regroupant les fonctions partagées entre l'analyseur et le correcteur pour ClassOrdering.
+/// </summary>
+public static class ClassOrdering
 {
     /// <summary>
-    /// Classe regroupant les fonctions partagées entre l'analyseur et le correcteur pour ClassOrdering.
+    /// Ordonne les membres d'une déclaration de type.
     /// </summary>
-    public static class ClassOrdering
+    /// <param name="éléments">Les éléments.</param>
+    /// <param name="modèleSémantique">Le modèle sémantique.</param>
+    /// <returns>Les éléments ordonnés.</returns>
+    public static IEnumerable<MemberDeclarationSyntax> OrdonnerMembres(
+        IEnumerable<MemberDeclarationSyntax> éléments,
+        SemanticModel modèleSémantique
+    )
     {
-        /// <summary>
-        /// Ordonne les membres d'une déclaration de type.
-        /// </summary>
-        /// <param name="éléments">Les éléments.</param>
-        /// <param name="modèleSémantique">Le modèle sémantique.</param>
-        /// <returns>Les éléments ordonnés.</returns>
-        public static IEnumerable<MemberDeclarationSyntax> OrdonnerMembres(IEnumerable<MemberDeclarationSyntax> éléments, SemanticModel modèleSémantique)
-        {
-            var comparateurAccessibilite = new AccessibilityComparer();
-            var comparateurStatiqueLectureSeule = new StaticReadonlyComparer();
+        var comparateurAccessibilite = new AccessibilityComparer();
+        var comparateurStatiqueLectureSeule = new StaticReadonlyComparer();
 
-            var constantes = éléments.OfType<FieldDeclarationSyntax>()
-                .Where(élément => élément.Modifiers.Any(jeton => jeton.IsKind(SyntaxKind.ConstKeyword)))
-                .TrierParNom()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var constantes = éléments
+            .OfType<FieldDeclarationSyntax>()
+            .Where(élément => élément.Modifiers.Any(jeton => jeton.IsKind(SyntaxKind.ConstKeyword)))
+            .TrierParNom()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var champs = éléments.OfType<FieldDeclarationSyntax>()
-                .Where(élément => !élément.Modifiers.Any(jeton => jeton.IsKind(SyntaxKind.ConstKeyword)))
-                .TrierParNom()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var champs = éléments
+            .OfType<FieldDeclarationSyntax>()
+            .Where(élément => !élément.Modifiers.Any(jeton => jeton.IsKind(SyntaxKind.ConstKeyword)))
+            .TrierParNom()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var constructeurs = éléments.OfType<ConstructorDeclarationSyntax>()
-                .TrierParNombreParametres()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var constructeurs = éléments
+            .OfType<ConstructorDeclarationSyntax>()
+            .TrierParNombreParametres()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var destructeurs = éléments.OfType<DestructorDeclarationSyntax>()
-                .TrierParNombreParametres()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var destructeurs = éléments
+            .OfType<DestructorDeclarationSyntax>()
+            .TrierParNombreParametres()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var délégués = éléments.OfType<DelegateDeclarationSyntax>()
-                .OrderBy(élément => élément.Identifier.ToString(), StringComparer.Ordinal)
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var délégués = éléments
+            .OfType<DelegateDeclarationSyntax>()
+            .OrderBy(élément => élément.Identifier.ToString(), StringComparer.Ordinal)
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var évènements = éléments.OfType<EventFieldDeclarationSyntax>()
-                .TrierParNom()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var évènements = éléments
+            .Where(élément => élément is EventFieldDeclarationSyntax or EventDeclarationSyntax)
+            .OrderBy(
+                élément =>
+                    élément is EventFieldDeclarationSyntax champ
+                        ? champ.Declaration.Variables.First().Identifier.ToString()
+                        : ((EventDeclarationSyntax)élément).Identifier.ToString(),
+                StringComparer.Ordinal
+            )
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var énumérations = éléments.OfType<EnumDeclarationSyntax>()
-                .TrierParNom()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var énumérations = éléments
+            .OfType<EnumDeclarationSyntax>()
+            .TrierParNom()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var interfaces = éléments.OfType<InterfaceDeclarationSyntax>()
-                .TrierParNom()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var interfaces = éléments
+            .OfType<InterfaceDeclarationSyntax>()
+            .TrierParNom()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var propriétés = éléments.OfType<PropertyDeclarationSyntax>()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var extensions = éléments.OfType<ExtensionBlockDeclarationSyntax>();
 
-            var indexeurs = éléments.OfType<IndexerDeclarationSyntax>()
-                .OrderBy(élément => élément.Type.ToString(), StringComparer.Ordinal)
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var propriétés = éléments
+            .OfType<PropertyDeclarationSyntax>()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var conversions = éléments.OfType<ConversionOperatorDeclarationSyntax>()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var indexeurs = éléments
+            .OfType<IndexerDeclarationSyntax>()
+            .OrderBy(élément => élément.Type.ToString(), StringComparer.Ordinal)
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var opérateurs = éléments.OfType<OperatorDeclarationSyntax>()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var conversions = éléments
+            .OfType<ConversionOperatorDeclarationSyntax>()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var méthodes = éléments.OfType<MethodDeclarationSyntax>()
-                .OrderBy(élément => élément.Identifier.ToString(), StringComparer.Ordinal)
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var opérateurs = éléments
+            .OfType<OperatorDeclarationSyntax>()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var structs = éléments.OfType<StructDeclarationSyntax>()
-                .TrierParNom()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var méthodes = éléments
+            .OfType<MethodDeclarationSyntax>()
+            .OrderBy(élément => élément.Identifier.ToString(), StringComparer.Ordinal)
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var classes = éléments.OfType<ClassDeclarationSyntax>()
-                .TrierParNom()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var structs = éléments
+            .OfType<StructDeclarationSyntax>()
+            .TrierParNom()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            var records = éléments.OfType<RecordDeclarationSyntax>()
-                .TrierParNom()
-                .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
-                .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
+        var classes = éléments
+            .OfType<ClassDeclarationSyntax>()
+            .TrierParNom()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-            return Concaténer(
-                constantes,
-                champs,
-                constructeurs,
-                destructeurs,
-                délégués,
-                évènements,
-                énumérations,
-                interfaces,
-                propriétés,
-                indexeurs,
-                conversions,
-                opérateurs,
-                méthodes,
-                structs,
-                classes,
-                records);
-        }
+        var records = éléments
+            .OfType<RecordDeclarationSyntax>()
+            .TrierParNom()
+            .TrierParSymbole(modèleSémantique, comparateurStatiqueLectureSeule)
+            .TrierParSymbole(modèleSémantique, comparateurAccessibilite);
 
-        private static IEnumerable<T> Concaténer<T>(params IEnumerable<T>[] listes)
-        {
-            return listes.SelectMany(x => x);
-        }
+        return Concaténer(
+            constantes,
+            champs,
+            constructeurs,
+            destructeurs,
+            délégués,
+            évènements,
+            énumérations,
+            interfaces,
+            extensions,
+            propriétés,
+            indexeurs,
+            conversions,
+            opérateurs,
+            méthodes,
+            structs,
+            classes,
+            records
+        );
+    }
 
-        private static IEnumerable<BaseFieldDeclarationSyntax> TrierParNom(this IEnumerable<BaseFieldDeclarationSyntax> éléments)
-        {
-            return éléments.OrderBy(élément => élément.Declaration.Variables.First().Identifier.ToString(), StringComparer.Ordinal);
-        }
+    private static IEnumerable<T> Concaténer<T>(params IEnumerable<T>[] listes)
+    {
+        return listes.SelectMany(x => x);
+    }
 
-        private static IEnumerable<BaseTypeDeclarationSyntax> TrierParNom(this IEnumerable<BaseTypeDeclarationSyntax> éléments)
-        {
-            return éléments.OrderBy(élément => élément.Identifier.ToString(), StringComparer.Ordinal);
-        }
+    private static IEnumerable<BaseFieldDeclarationSyntax> TrierParNom(
+        this IEnumerable<BaseFieldDeclarationSyntax> éléments
+    )
+    {
+        return éléments.OrderBy(
+            élément => élément.Declaration.Variables.First().Identifier.ToString(),
+            StringComparer.Ordinal
+        );
+    }
 
-        private static IEnumerable<BaseMethodDeclarationSyntax> TrierParNombreParametres(this IEnumerable<BaseMethodDeclarationSyntax> éléments)
-        {
-            return éléments.OrderBy(élément => élément.ParameterList.ChildNodes().Count());
-        }
+    private static IEnumerable<BaseTypeDeclarationSyntax> TrierParNom(
+        this IEnumerable<BaseTypeDeclarationSyntax> éléments
+    )
+    {
+        return éléments.OrderBy(élément => élément.Identifier.ToString(), StringComparer.Ordinal);
+    }
 
-        private static IEnumerable<BaseFieldDeclarationSyntax> TrierParSymbole(this IEnumerable<BaseFieldDeclarationSyntax> éléments, SemanticModel modèleSémantique, IComparer<ISymbol?> comparateur)
-        {
-            return éléments.OrderBy(élément => modèleSémantique.GetDeclaredSymbol(élément.Declaration.Variables.First()), comparateur);
-        }
+    private static IEnumerable<BaseMethodDeclarationSyntax> TrierParNombreParametres(
+        this IEnumerable<BaseMethodDeclarationSyntax> éléments
+    )
+    {
+        return éléments.OrderBy(élément => élément.ParameterList.ChildNodes().Count());
+    }
 
-        private static IEnumerable<MemberDeclarationSyntax> TrierParSymbole(this IEnumerable<MemberDeclarationSyntax> éléments, SemanticModel modèleSémantique, IComparer<ISymbol?> comparateur)
-        {
-            return éléments.OrderBy(élément => modèleSémantique.GetDeclaredSymbol(élément), comparateur);
-        }
+    private static IEnumerable<BaseFieldDeclarationSyntax> TrierParSymbole(
+        this IEnumerable<BaseFieldDeclarationSyntax> éléments,
+        SemanticModel modèleSémantique,
+        IComparer<ISymbol?> comparateur
+    )
+    {
+        return éléments.OrderBy(
+            élément => modèleSémantique.GetDeclaredSymbol(élément.Declaration.Variables.First()),
+            comparateur
+        );
+    }
+
+    private static IEnumerable<MemberDeclarationSyntax> TrierParSymbole(
+        this IEnumerable<MemberDeclarationSyntax> éléments,
+        SemanticModel modèleSémantique,
+        IComparer<ISymbol?> comparateur
+    )
+    {
+        return éléments.OrderBy(
+            élément =>
+                élément is BaseFieldDeclarationSyntax champ
+                    ? modèleSémantique.GetDeclaredSymbol(champ.Declaration.Variables.First())
+                    : modèleSémantique.GetDeclaredSymbol(élément),
+            comparateur
+        );
     }
 }

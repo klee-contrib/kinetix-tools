@@ -5,86 +5,97 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kinetix.Tools.Analyzers.Diagnostics.Design
+namespace Kinetix.Tools.Analyzers.Diagnostics.Naming;
+
+/// <summary>
+/// Vérifie que le paramètre de constructeur pour un service injecté est nommé comme le service.
+/// </summary>
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+public class KTA1501_ServiceCtrParameterNamingAnalyser : DiagnosticAnalyzer
 {
-    /// <summary>
-    /// Vérifie que le paramètre de constructeur pour un service injecté est nommé comme le service.
-    /// </summary>
-    [DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class KTA1501_ServiceCtrParameterNamingAnalyser : DiagnosticAnalyzer
+    public const string DiagnosticId = "KTA1501";
+    private static readonly string Title = "Nommage du paramètre de service";
+    private static readonly string MessageFormat = "Le paramètre {1} du constructeur la classe {0} doit être nommé {2}";
+    private static readonly string Description = "Renommer le paramètre comme le service.";
+    private const string Category = "Naming";
+
+    private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(
+        DiagnosticId,
+        Title,
+        MessageFormat,
+        Category,
+        Description
+    );
+
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+
+    public override void Initialize(AnalysisContext context)
     {
-        public const string DiagnosticId = "KTA1501";
-        private static readonly string Title = "Nommage du paramètre de service";
-        private static readonly string MessageFormat = "Le paramètre {1} du constructeur la classe {0} doit être nommé {2}";
-        private static readonly string Description = "Renommer le paramètre comme le service.";
-        private const string Category = "Naming";
+        /* Analyse pour les déclaration de fields. */
+        context.RegisterSyntaxNodeAction(AnalyzeSyntaxNode, ImmutableArray.Create(SyntaxKind.ClassDeclaration));
+    }
 
-        private static readonly DiagnosticDescriptor Rule = DiagnosticRuleUtils.CreateRule(DiagnosticId, Title, MessageFormat, Category, Description);
-
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
-
-        public override void Initialize(AnalysisContext context)
+    private static void AnalyzeSyntaxNode(SyntaxNodeAnalysisContext context)
+    {
+        if (context.Node is not ClassDeclarationSyntax node)
         {
-            /* Analyse pour les déclaration de fields. */
-            context.RegisterSyntaxNodeAction(AnalyzeSyntaxNode, ImmutableArray.Create(SyntaxKind.ClassDeclaration));
+            return;
         }
 
-        private static void AnalyzeSyntaxNode(SyntaxNodeAnalysisContext context)
+        new ConstructorWalker(context, node.GetClassName()).Visit(node);
+    }
+
+    private class ConstructorWalker : CSharpSyntaxWalker
+    {
+        private readonly SyntaxNodeAnalysisContext _context;
+        private readonly string _className;
+
+        public ConstructorWalker(SyntaxNodeAnalysisContext context, string className)
         {
-            if (context.Node is not ClassDeclarationSyntax node)
+            _context = context;
+            _className = className;
+        }
+
+        public override void VisitConstructorDeclaration(ConstructorDeclarationSyntax node)
+        {
+            foreach (var paramNode in node.ParameterList.Parameters)
+            {
+                VisitCtrParameter(paramNode);
+            }
+        }
+
+        private void VisitCtrParameter(ParameterSyntax paramNode)
+        {
+            var namedTypeSymbol = _context.GetNamedSymbol(paramNode.Type!);
+            if (namedTypeSymbol == null)
+            {
+                return;
+            }
+            if (!namedTypeSymbol.IsServiceContract())
             {
                 return;
             }
 
-            new ConstructorWalker(context, node.GetClassName()).Visit(node);
-        }
-
-        private class ConstructorWalker : CSharpSyntaxWalker
-        {
-            private readonly SyntaxNodeAnalysisContext _context;
-            private readonly string _className;
-
-            public ConstructorWalker(SyntaxNodeAnalysisContext context, string className)
+            var typeName = namedTypeSymbol.Name;
+            var isContract = typeName.IsServiceContractName();
+            if (!isContract)
             {
-                _context = context;
-                _className = className;
+                return;
             }
-
-            public override void VisitConstructorDeclaration(ConstructorDeclarationSyntax node)
+            var expectedFieldName = typeName.GetServiceContractParameterName();
+            var actualFieldName = paramNode.GetParameterName();
+            if (expectedFieldName == actualFieldName)
             {
-                foreach (var paramNode in node.ParameterList.Parameters)
-                {
-                    VisitCtrParameter(paramNode);
-                }
+                return;
             }
-
-            private void VisitCtrParameter(ParameterSyntax paramNode)
-            {
-                var namedTypeSymbol = _context.GetNamedSymbol(paramNode.Type!);
-                if (namedTypeSymbol == null)
-                {
-                    return;
-                }
-                if (!namedTypeSymbol.IsServiceContract())
-                {
-                    return;
-                }
-
-                var typeName = namedTypeSymbol.Name;
-                var isContract = typeName.IsServiceContractName();
-                if (!isContract)
-                {
-                    return;
-                }
-                var expectedFieldName = typeName.GetServiceContractParameterName();
-                var actualFieldName = paramNode.GetParameterName();
-                if (expectedFieldName == actualFieldName)
-                {
-                    return;
-                }
-                var diagnostic = Diagnostic.Create(Rule, paramNode.GetParameterNameLocation(), _className, actualFieldName, expectedFieldName);
-                _context.ReportDiagnostic(diagnostic);
-            }
+            var diagnostic = Diagnostic.Create(
+                Rule,
+                paramNode.GetParameterNameLocation(),
+                _className,
+                actualFieldName,
+                expectedFieldName
+            );
+            _context.ReportDiagnostic(diagnostic);
         }
     }
 }

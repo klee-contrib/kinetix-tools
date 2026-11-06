@@ -11,73 +11,90 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Kinetix.Tools.Analyzers.CodeFixes
+namespace Kinetix.Tools.Analyzers.CodeFixes;
+
+/// <summary>
+/// Correcteur pour OrdreConstructeur.
+/// Permet d'enregistrer les corrections liées aux diagnostics.
+/// </summary>
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ReorderClassFix))]
+[Shared]
+public class ReorderClassFix : CodeFixProvider
 {
-    /// <summary>
-    /// Correcteur pour OrdreConstructeur.
-    /// Permet d'enregistrer les corrections liées aux diagnostics.
-    /// </summary>
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ReorderClassFix))]
-    [Shared]
-    public class ReorderClassFix : CodeFixProvider
+    public sealed override ImmutableArray<string> FixableDiagnosticIds =>
+        [KTA1200_ClassMembersShouldBeOrdered.DiagnosticId];
+
+    public sealed override FixAllProvider GetFixAllProvider()
     {
-        public sealed override ImmutableArray<string> FixableDiagnosticIds => [KTA1200_ClassMembersShouldBeOrdered.DiagnosticId];
+        return WellKnownFixAllProviders.BatchFixer;
+    }
 
-        public sealed override FixAllProvider GetFixAllProvider()
+    /// <summary>
+    /// Enregistre les corrections de codes.
+    /// </summary>
+    /// <param name="context">Le contexte.</param>
+    /// <returns>Peut être attendu.</returns>
+    public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
+    {
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+
+        var diagnostic = context.Diagnostics.First();
+        var diagnosticSpan = diagnostic.Location.SourceSpan;
+        var type = root
+            ?.FindToken(diagnosticSpan.Start)
+            .Parent?.AncestorsAndSelf()
+            .OfType<TypeDeclarationSyntax>()
+            .First();
+
+        if (type != null)
         {
-            return WellKnownFixAllProviders.BatchFixer;
+            context.RegisterCodeFix(
+                CodeAction.Create(
+                    "Réordonner les membres",
+                    c => OrdonnerMembres(context.Document, type, c),
+                    "Réordonner les membres"
+                ),
+                diagnostic
+            );
+        }
+    }
+
+    /// <summary>
+    /// Réordonne les membres d'un type.
+    /// </summary>
+    /// <param name="document">Le document.</param>
+    /// <param name="type">Le type.</param>
+    /// <param name="jetonAnnulation">Le jeton d'annulation.</param>
+    /// <returns>Le nouveau document.</returns>
+    private static async Task<Document> OrdonnerMembres(
+        Document document,
+        TypeDeclarationSyntax type,
+        CancellationToken jetonAnnulation
+    )
+    {
+        // On récupère la racine.
+        var racine = await document.GetSyntaxRootAsync(jetonAnnulation).ConfigureAwait(false);
+        var modèleSémantique = await document.GetSemanticModelAsync(jetonAnnulation);
+
+        if (racine == null || modèleSémantique == null)
+        {
+            return document;
         }
 
-        /// <summary>
-        /// Enregistre les corrections de codes.
-        /// </summary>
-        /// <param name="context">Le contexte.</param>
-        /// <returns>Peut être attendu.</returns>
-        public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
-        {
-            var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+        var membres = ClassOrdering
+            .OrdonnerMembres(type.Members, modèleSémantique)
+            .Select(membre =>
+                membre is ExtensionBlockDeclarationSyntax extension
+                    ? extension.WithMembers(
+                        SyntaxFactory.List(ClassOrdering.OrdonnerMembres(extension.Members, modèleSémantique))
+                    )
+                    : membre
+            );
+        var nouveauType = type.WithMembers(SyntaxFactory.List(membres));
 
-            var diagnostic = context.Diagnostics.First();
-            var diagnosticSpan = diagnostic.Location.SourceSpan;
-            var type = root?.FindToken(diagnosticSpan.Start).Parent?.AncestorsAndSelf().OfType<TypeDeclarationSyntax>().First();
+        // Et on met à jour la racine.
+        var nouvelleRacine = racine.ReplaceNode(type, nouveauType);
 
-            if (type != null)
-            {
-                context.RegisterCodeFix(
-                    CodeAction.Create(
-                        "Réordonner les membres",
-                        c => OrdonnerMembres(context.Document, type, c),
-                        "Réordonner les membres"),
-                    diagnostic);
-            }
-        }
-
-        /// <summary>
-        /// Réordonne les membres d'un type.
-        /// </summary>
-        /// <param name="document">Le document.</param>
-        /// <param name="type">Le type.</param>
-        /// <param name="jetonAnnulation">Le jeton d'annulation.</param>
-        /// <returns>Le nouveau document.</returns>
-        private static async Task<Document> OrdonnerMembres(Document document, TypeDeclarationSyntax type, CancellationToken jetonAnnulation)
-        {
-            // On récupère la racine.
-            var racine = await document
-                .GetSyntaxRootAsync(jetonAnnulation)
-                .ConfigureAwait(false);
-            var modèleSémantique = await document.GetSemanticModelAsync(jetonAnnulation);
-
-            if (racine == null || modèleSémantique == null)
-            {
-                return document;
-            }
-
-            var nouveauType = type.WithMembers(SyntaxFactory.List(ClassOrdering.OrdonnerMembres(type.Members, modèleSémantique)));
-
-            // Et on met à jour la racine.
-            var nouvelleRacine = racine.ReplaceNode(type, nouveauType);
-
-            return document.WithSyntaxRoot(nouvelleRacine);
-        }
+        return document.WithSyntaxRoot(nouvelleRacine);
     }
 }

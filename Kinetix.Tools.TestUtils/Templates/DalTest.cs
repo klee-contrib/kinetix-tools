@@ -1,38 +1,36 @@
 ﻿using Kinetix.Services;
 using Kinetix.Tools.TestUtils.Helpers;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Kinetix.Tools.TestUtils
+namespace Kinetix.Tools.TestUtils.Templates;
+
+/// <summary>
+/// Defines methods needed in tests of Data Access Layers.
+/// </summary>
+public abstract class DalTest
 {
+    private ServiceScope _scope;
+
     /// <summary>
-    /// Defines methods needed in tests of Data Access Layers.
+    /// Publie le singleton des valeurs factices.
     /// </summary>
-    public abstract class DalTest
+    public DummyValues Dum => DummyValues.Instance;
+
+    /// <summary>
+    /// Test cleanup.
+    /// </summary>
+    [TestCleanup]
+    public void TestCleanup()
     {
-        private ServiceScope _scope;
+        _scope.Dispose();
+    }
 
-        /// <summary>
-        /// Publie le singleton des valeurs factices.
-        /// </summary>
-        public DummyValues Dum => DummyValues.Instance;
-
-        /// <summary>
-        /// Test cleanup.
-        /// </summary>
-        [TestCleanup]
-        public void TestCleanup()
-        {
-            _scope.Dispose();
-        }
-
-        /// <summary>
-        /// Test initialize.
-        /// </summary>
-        [TestInitialize]
-        public void TestInitialize()
-        {
-            _scope = SharedState.Provider.GetService<TransactionScopeManager>().EnsureTransaction();
-        }
+    /// <summary>
+    /// Test initialize.
+    /// </summary>
+    [TestInitialize]
+    public void TestInitialize()
+    {
+        _scope = SharedState.Provider.GetService<TransactionScopeManager>().EnsureTransaction();
     }
 }
