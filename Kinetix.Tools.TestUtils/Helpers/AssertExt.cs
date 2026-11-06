@@ -39,7 +39,7 @@ namespace Kinetix.Tools.TestUtils
 
             if (expected.Count != 0)
             {
-                var beanDef = BeanDescriptor.GetDefinition(expected.First());
+                var beanDef = BeanDescriptor.GetDefinition(expected.First().GetType());
 
                 var expectedValue = expected.GetEnumerator();
                 var actualValue = actual.GetEnumerator();
@@ -200,7 +200,7 @@ namespace Kinetix.Tools.TestUtils
                 Assert.Fail("Un des beans est null.");
             }
 
-            var beanDef = BeanDescriptor.GetDefinition(expected);
+            var beanDef = BeanDescriptor.GetDefinition(expected.GetType());
 
             foreach (var prop in beanDef.Properties)
             {

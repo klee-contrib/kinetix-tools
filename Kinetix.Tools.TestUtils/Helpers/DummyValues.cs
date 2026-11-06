@@ -1,6 +1,4 @@
 ﻿using Kinetix.Modeling;
-using Kinetix.Modeling.Annotations;
-
 
 namespace Kinetix.Tools.TestUtils
 {
@@ -52,7 +50,11 @@ namespace Kinetix.Tools.TestUtils
         /// <summary>
         /// Valeur factice de tableau d'id.
         /// </summary>
-        public Guid[] GuidArray = { Guid.Parse("fecad091-a122-4d3b-b583-e254f073f4f3"), Guid.Parse("680d3265-763e-4bf5-a976-0000c35f0dce") };
+        public Guid[] GuidArray =
+        {
+            Guid.Parse("fecad091-a122-4d3b-b583-e254f073f4f3"),
+            Guid.Parse("680d3265-763e-4bf5-a976-0000c35f0dce"),
+        };
 
         /// <summary>
         /// Valeur factice de list d'id.
@@ -97,16 +99,13 @@ namespace Kinetix.Tools.TestUtils
             /* génère des valeurs pour les champs primitifs */
             foreach (var prop in BeanDescriptor.GetDefinition(typeof(T)).Properties)
             {
-                if (!prop.IsReadOnly && prop.PrimitiveType != null && !(prop.IsPrimaryKey && !withId))
+                if (
+                    !prop.IsReadOnly
+                    && prop.PrimitiveType != null
+                    && !(prop.IsPrimaryKey && !withId)
+                )
                 {
-                    if (prop.Domain.ValidationAttributes.OfType<EmailAttribute>().Any())
-                    {
-                        prop.SetValue(dto, "yolo@email.com");
-                    }
-                    else
-                    {
-                        prop.SetValue(dto, Dum(prop.PrimitiveType));
-                    }
+                    prop.SetValue(dto, Dum(prop.PrimitiveType));
                 }
             }
 
@@ -120,20 +119,13 @@ namespace Kinetix.Tools.TestUtils
         /// <returns>Valeur.</returns>
         public object Dum(Type t)
         {
-            return t == typeof(string)
-                ? Code
-                : t == typeof(int)
-                ? Id
-                : t == typeof(short)
-                ? Convert.ToInt16(Id)
-                : t == typeof(bool)
-                ? Booleen
-                : t == typeof(DateTime)
-                ? Date
-                : t == typeof(decimal)
-                ? Montant
-                : t == typeof(Guid)
-                ? Guid
+            return t == typeof(string) ? Code
+                : t == typeof(int) ? Id
+                : t == typeof(short) ? Convert.ToInt16(Id)
+                : t == typeof(bool) ? Booleen
+                : t == typeof(DateTime) ? Date
+                : t == typeof(decimal) ? Montant
+                : t == typeof(Guid) ? Guid
                 : (object)null;
         }
 
