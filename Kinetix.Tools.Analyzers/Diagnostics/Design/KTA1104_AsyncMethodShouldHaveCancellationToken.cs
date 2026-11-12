@@ -67,12 +67,14 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
             "System.Collections.Generic.IAsyncEnumerable`1"
         )!;
 
-        var semMethod = semanticModel.GetDeclaredSymbol(method) as IMethodSymbol;
+        if (semanticModel.GetDeclaredSymbol(method) is not IMethodSymbol semMethod || HasExternalDeclaration(semMethod))
+        {
+            return;
+        }
 
         // Si la méthode ne retourne pas un type asynchrone, on s'en fiche.
         if (
-            semMethod is null
-            || new[] { asyncEnumerable, genericTask, genericValueTask, task, valueTask }.All(t =>
+            new[] { asyncEnumerable, genericTask, genericValueTask, task, valueTask }.All(t =>
                 !t.Equals(semMethod.ReturnType.OriginalDefinition, SymbolEqualityComparer.Default)
             )
         )
@@ -133,6 +135,35 @@ public class KTA1104_AsyncMethodShouldHaveCancellationToken : DiagnosticAnalyzer
         {
             context.ReportDiagnostic(Diagnostic.Create(Rule, context.Symbol.Locations[0]));
         }
+    }
+
+    private static bool HasExternalDeclaration(IMethodSymbol method)
+    {
+        if (method.OverriddenMethod?.DeclaringSyntaxReferences.IsEmpty == true)
+        {
+            return true;
+        }
+
+        if (
+            method.ExplicitInterfaceImplementations.Any(interfaceMethod =>
+                interfaceMethod.DeclaringSyntaxReferences.IsEmpty
+            )
+        )
+        {
+            return true;
+        }
+
+        return method
+            .ContainingType.AllInterfaces.SelectMany(interfaceType =>
+                interfaceType.GetMembers().OfType<IMethodSymbol>()
+            )
+            .Any(interfaceMethod =>
+                interfaceMethod.DeclaringSyntaxReferences.IsEmpty
+                && SymbolEqualityComparer.Default.Equals(
+                    method.ContainingType.FindImplementationForInterfaceMember(interfaceMethod),
+                    method
+                )
+            );
     }
 
     private bool InvocationMethodTakesAToken(

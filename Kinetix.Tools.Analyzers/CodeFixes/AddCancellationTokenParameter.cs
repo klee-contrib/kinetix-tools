@@ -141,8 +141,7 @@ public class AddCancellationTokenParameter : CodeFixProvider
                             return i;
                         }
 
-                        var previousNode =
-                            doc.Content.LastOrDefault(c => c.ToString().Contains("<param"))
+                        var previousNode = doc.Content.LastOrDefault(c => c.ToString().Contains("<param"))
                             ?? doc.Content.LastOrDefault(c => c.ToString().Contains("<summary>"));
 
                         if (previousNode == null)

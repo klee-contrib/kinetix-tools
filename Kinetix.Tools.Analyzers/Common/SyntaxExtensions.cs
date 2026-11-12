@@ -50,8 +50,7 @@ public static class SyntaxExtensions
     /// <returns>Nom complet de l'espace de nom.</returns>
     public static string GetNameSpaceFullName(this ClassDeclarationSyntax classNode)
     {
-        var nsName =
-            classNode.FirstAncestorOrSelf<NamespaceDeclarationSyntax>()?.Name
+        var nsName = classNode.FirstAncestorOrSelf<NamespaceDeclarationSyntax>()?.Name
             ?? classNode.FirstAncestorOrSelf<FileScopedNamespaceDeclarationSyntax>()?.Name;
         return nsName!.ToString();
     }

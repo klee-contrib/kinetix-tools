@@ -15,6 +15,21 @@ public sealed class KTA1104_AsyncMethodShouldHaveCancellationTokenTests
         DiagnosticCaseAssertions.AssertDiagnosticAsync(testCase, new KTA1104_AsyncMethodShouldHaveCancellationToken());
 
     [TestMethod]
+    [DataRow("class Example : IAsyncDisposable { public async ValueTask DisposeAsync() { await Task.Delay(1); } }")]
+    [DataRow(
+        "class Example : MemoryStream { public override async ValueTask DisposeAsync() { await Task.Delay(1); } }"
+    )]
+    public async Task DoesNotReportWhenImplementingOrOverridingAnExternalMethod(string typeDeclaration)
+    {
+        var diagnostics = await AnalyzerTestHelper.AnalyzeAsync(
+            $"using System; using System.IO; using System.Threading.Tasks; {typeDeclaration}",
+            new KTA1104_AsyncMethodShouldHaveCancellationToken()
+        );
+
+        Assert.IsEmpty(diagnostics);
+    }
+
+    [TestMethod]
     [DataRow("Task RunAsync(CancellationToken cancellationToken) { CancellableAsync(); return Task.CompletedTask; }")]
     [DataRow("Task RunAsync() { CancellableAsync(CancellationToken.None); return Task.CompletedTask; }")]
     [DataRow("Task RunAsync() { WithParamsAsync(CancellationToken.None); return Task.CompletedTask; }")]
